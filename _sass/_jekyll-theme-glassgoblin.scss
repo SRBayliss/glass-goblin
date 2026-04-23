@@ -36,18 +36,39 @@ nav {
     font-weight: bold;
     padding: 5px 25px;
     margin: 0;
-    color: variables.$brand-yellow-bee;
+    color: variables.$nav-link-color;
     display: flex;
     align-items: center;
+    position: relative;
   }
 
   a:hover {
-    background: radial-gradient(ellipse at center,
-      rgba(150, 255, 120, 0.65) 0%,
-      rgba(126, 217, 124, 0.25) 55%,
-      rgba(126, 217, 124, 0) 100%);
-    color: #ffffff;
+    color: variables.$nav-link-hover-color;
     text-decoration: none;
+  }
+
+  a:hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 35% 45% at center,
+      variables.$uranium-glow-core 0%,
+      variables.$uranium-glow-mid 55%,
+      variables.$uranium-glow-edge 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  a.nav-active {
+    color: variables.$nav-active-link-color;
+
+    &:hover {
+      color: variables.$nav-active-link-color;
+    }
+
+    &:hover::before {
+      content: none;
+    }
   }
 
   .nav-group {
@@ -58,22 +79,43 @@ nav {
       font-weight: bold;
       padding: 5px 25px;
       margin: 0;
-      color: variables.$brand-yellow-bee;
+      color: variables.$nav-link-color;
       cursor: pointer;
       list-style: none;
       display: flex;
       align-items: center;
+      position: relative;
 
       &::-webkit-details-marker {
         display: none;
       }
 
       &:hover {
-        background: radial-gradient(ellipse at center,
-          rgba(150, 255, 120, 0.65) 0%,
-          rgba(126, 217, 124, 0.25) 55%,
-          rgba(126, 217, 124, 0) 100%);
-        color: #ffffff;
+        color: variables.$nav-link-hover-color;
+      }
+
+      &:hover::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 35% 45% at center,
+          variables.$uranium-glow-core 0%,
+          variables.$uranium-glow-mid 55%,
+          variables.$uranium-glow-edge 100%);
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      &.nav-active {
+        color: variables.$nav-active-link-color;
+
+        &:hover {
+          color: variables.$nav-active-link-color;
+        }
+
+        &:hover::before {
+          content: none;
+        }
       }
     }
 
@@ -112,11 +154,11 @@ body {
   font-size: 16px;
   line-height: 1.5;
   color: variables.$body-text-color;
-  background-color: #0a0a12;
+  background-color: variables.$body-bg-color;
   background-image:
-    radial-gradient(ellipse 70% 55% at 50% 18%, rgba(60, 30, 200, 0.55), transparent 65%),
-    radial-gradient(ellipse 80% 50% at 50% 80%, rgba(57, 190, 55, 0.35), transparent 70%),
-    radial-gradient(ellipse 120% 100% at 50% 50%, rgba(0, 0, 0, 0.55), transparent 60%);
+    radial-gradient(ellipse 70% 55% at 50% 18%, variables.$body-bg-glow-top, transparent 65%),
+    radial-gradient(ellipse 80% 50% at 50% 80%, variables.$body-bg-glow-bottom, transparent 70%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, variables.$body-bg-vignette, transparent 60%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -151,19 +193,19 @@ a {
 .btn {
   display: inline-block;
   margin-bottom: 1rem;
-  color: rgba(255, 255, 255, 0.7);
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: variables.$btn-text-color;
+  background-color: variables.$btn-bg-color;
+  border-color: variables.$btn-border-color;
   border-style: solid;
   border-width: 1px;
   border-radius: 0.3rem;
   transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 
   &:hover {
-    color: rgba(255, 255, 255, 0.8);
+    color: variables.$btn-text-hover-color;
     text-decoration: none;
-    background-color: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
+    background-color: variables.$btn-bg-hover-color;
+    border-color: variables.$btn-border-hover-color;
   }
 
   + .btn {
@@ -282,12 +324,12 @@ a {
   }
   
   kbd {
-    background-color: #fafbfc;
-    border: 1px solid #c6cbd1;
-    border-bottom-color: #959da5;
+    background-color: variables.$kbd-bg-color;
+    border: 1px solid variables.$kbd-border-color;
+    border-bottom-color: variables.$kbd-border-shadow-color;
     border-radius: 3px;
-    box-shadow: inset 0 -1px 0 #959da5;
-    color: #444d56;
+    box-shadow: inset 0 -1px 0 variables.$kbd-border-shadow-color;
+    color: variables.$kbd-text-color;
     display: inline-block;
     font-size: 11px;
     line-height: 10px;
