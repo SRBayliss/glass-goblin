@@ -230,6 +230,13 @@ a {
   @include small {
     font-size: 1.75rem;
   }
+
+  .site-logo {
+    display: block;
+    margin: 0 auto;
+    max-width: min(100%, 600px);
+    height: auto;
+  }
 }
 
 .project-tagline {
