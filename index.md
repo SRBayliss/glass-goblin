@@ -24,4 +24,4 @@ My Vinted account - follow Glass Goblin on Vinted when I list something new.
 
 ### WhatsApp Channel
 
-Get a periodic message in advance of beautiful pieces being listed on socials. If you're already on your phone, sign up [‎https://whatsapp.com/channel/0029VbAnmlqId7nTDqcPfw2K](here), otherwise scan the QR code below.
+Get a periodic message in advance of beautiful pieces being listed on socials. If you're already on your phone, sign up [here‎](https://whatsapp.com/channel/0029VbAnmlqId7nTDqcPfw2K), otherwise scan the QR code below.
