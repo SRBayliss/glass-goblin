@@ -3,10 +3,8 @@ layout: no-nav
 title: Glass Goblin
 ---
 
-## Welcome to Glass Goblin
-
-_Gorgeous antique and glowing glass, radioactive curios and uranium jewellery
-All lovingly chosen and carefully curated by me, Glass Goblin_
+## _Gorgeous antique and glowing glass, radioactive curios and uranium jewellery_
+### _All lovingly chosen and carefully curated by me, Glass Goblin_
 
 ---
 
