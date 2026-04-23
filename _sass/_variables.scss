@@ -1,13 +1,16 @@
 // Brand
 $brand-black: #020000; // Diesel
+$brand-white: #ffffff;
 $brand-blue: #0B60B9; // Denim
 $brand-green: #39BE37; // Apple
 $brand-green-light: #7ED97C; // Lighter shade of Apple
+$brand-green-uranium: #96ff78; // Bright uranium-glass glow
 $brand-grey-light: #BCBCBC; // Silver
 $brand-grey-medium: #89898A; // Jumbo
 $brand-grey-dark: #333333; // Mine Shaft
 $brand-orange: #F77D2C; // Crusta
 $brand-purple: #CF28EE; // Electric Violet
+$brand-purple-deep: #3c1ec8; // Deep purple for backdrop glow
 $brand-red: #BC1F2B; // Cardinal
 $brand-yellow: #FDF85C; // Candy Corn
 $brand-yellow-bee: #FFC65C; // Golden Tainoi
@@ -22,14 +25,44 @@ $header-bg-color-secondary: $brand-green-light;
 
 // Text
 $section-headings-color: $brand-green-light;
-$body-text-color: $brand-grey-medium;
-$body-link-color: $brand-green;
-$blockquote-text-color: $brand-grey-medium;
+$body-text-color: #d8d8d8;
+$body-link-color: $brand-green-light;
+$blockquote-text-color: $brand-grey-light;
 
 // Borders
-$border-color: #dce6f0;
-$table-border-color: #e9ebec;
-$hr-border-color: #eff0f1;
+$border-color: rgba($brand-white, 0.12);
+$table-border-color: rgba($brand-white, 0.08);
+$hr-border-color: rgba($brand-white, 0.12);
+
+// Page background
+$body-bg-color: #0a0a12;
+$body-bg-glow-top: rgba($brand-purple-deep, 0.55);
+$body-bg-glow-bottom: rgba($brand-green, 0.35);
+$body-bg-vignette: rgba(0, 0, 0, 0.55);
+
+// Nav
+$nav-link-color: $brand-yellow-bee;
+$nav-link-hover-color: $brand-white;
+$nav-active-link-color: $brand-green;
+
+// Uranium glow (used on nav hover)
+$uranium-glow-core: rgba($brand-green-uranium, 0.65);
+$uranium-glow-mid: rgba($brand-green-light, 0.25);
+$uranium-glow-edge: rgba($brand-green-light, 0);
+
+// Keyboard element (kbd)
+$kbd-bg-color: #fafbfc;
+$kbd-border-color: #c6cbd1;
+$kbd-border-shadow-color: #959da5;
+$kbd-text-color: #444d56;
+
+// Legacy Cayman button (.btn) — currently unused; kept for theme parity
+$btn-text-color: rgba($brand-white, 0.7);
+$btn-bg-color: rgba($brand-white, 0.08);
+$btn-border-color: rgba($brand-white, 0.2);
+$btn-text-hover-color: rgba($brand-white, 0.8);
+$btn-bg-hover-color: rgba($brand-white, 0.2);
+$btn-border-hover-color: rgba($brand-white, 0.3);
 
 // Breakpoints
 $large-breakpoint: 64em;

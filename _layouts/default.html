@@ -20,27 +20,49 @@
     <nav>
       {% for item in site.data.navigation %}
         {% if item.group != null %}
-        <ul>
-          {{ item.group }}
+          {% assign group_active = false %}
           {% for subitem in item.items %}
-          <li>
-            <a href="{{ relative_url }}/{{ item.link }}" {% if page.url == item.link %}style="color: red;"{% endif %}>
-              {{ item.name }}
-            </a>
-          </li>
+            {% if subitem.link and page.url contains subitem.link %}
+              {% assign group_active = true %}
+            {% endif %}
           {% endfor %}
-        </ul>
-        {% endif %}
-        <a href="{{ relative_url }}/{{ item.link }}" {% if page.url == item.link %}style="color: red;"{% endif %}>
+        <details class="nav-group">
+          <summary {% if group_active %}class="nav-active"{% endif %}>{{ item.group }}</summary>
+          <ul>
+            {% for subitem in item.items %}
+            <li>
+              <a href="{{ subitem.link | relative_url }}" {% if subitem.link and page.url contains subitem.link %}class="nav-active"{% endif %}>
+                {{ subitem.name }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% else %}
+          {% assign item_active = false %}
+          {% if item.link %}
+            {% if page.url contains item.link %}{% assign item_active = true %}{% endif %}
+          {% else %}
+            {% if page.url == '/' %}{% assign item_active = true %}{% endif %}
+          {% endif %}
+        <a href="{{ item.link | default: '/' | relative_url }}" {% if item_active %}class="nav-active"{% endif %}>
           {{ item.name }}
         </a>
+        {% endif %}
       {% endfor %}
     </nav>
     <main id="content" class="main-content" role="main">
       {{ content }}
       <footer class="site-footer">
-        {% include footer.html %}       
+        {% include footer.html %}
       </footer>
     </main>
+    <script>
+      document.addEventListener('click', function (e) {
+        document.querySelectorAll('details.nav-group[open]').forEach(function (d) {
+          if (!d.contains(e.target)) d.open = false;
+        });
+      });
+    </script>
   </body>
 </html>

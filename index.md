@@ -1,25 +1,28 @@
 ---
-layout: default
+layout: no-nav
 title: Glass Goblin
 ---
-# H1 Title
 
-## H2 Subtitle
+## Welcome to Glass Goblin
 
-### H3
+The goblin cave is still under construction…in the meantime I have plenty of other places you can find me!
 
-#### H4
+### Facebook
 
-##### H5
+Be among the first to buy! I list pieces for sale on Facebook and Instagram first, so make sure you’re following me on socials.
 
-###### H6
+### Instagram
 
-List:
+Be among the first to buy! I list pieces for sale on Facebook and Instagram first, so make sure you’re following me on socials.
 
-- example
-- example 2
-  - e2 sub point
-  - e2 sub point 2
-- example 3
+### Etsy
 
-This a random paragraph used to *itallicise*, **embolden**, and really ***emphasise***.
+My Etsy shop - add my shop to your favourites to be notified when I list something new.
+
+### Vinted
+
+My Vinted account - follow Glass Goblin on Vinted when I list something new.
+
+### WhatsApp Channel
+
+Launching soon - get a periodic message in advance of beautiful pieces being listed on socials.

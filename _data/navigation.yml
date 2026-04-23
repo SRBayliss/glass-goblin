@@ -1,5 +1,5 @@
 - name: Home
-  link:
+  link: home
 - group: Shop at Glass Goblin
   items:
     - name: Glass Goblin Headquaters
