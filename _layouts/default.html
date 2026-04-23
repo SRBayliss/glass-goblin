@@ -20,27 +20,37 @@
     <nav>
       {% for item in site.data.navigation %}
         {% if item.group != null %}
-        <ul>
-          {{ item.group }}
-          {% for subitem in item.items %}
-          <li>
-            <a href="{{ relative_url }}/{{ item.link }}" {% if page.url == item.link %}style="color: red;"{% endif %}>
-              {{ item.name }}
-            </a>
-          </li>
-          {% endfor %}
-        </ul>
-        {% endif %}
+        <details class="nav-group">
+          <summary>{{ item.group }}</summary>
+          <ul>
+            {% for subitem in item.items %}
+            <li>
+              <a href="{{ subitem.link | relative_url }}" {% if page.url contains subitem.link %}style="color: red;"{% endif %}>
+                {{ subitem.name }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% else %}
         <a href="{{ relative_url }}/{{ item.link }}" {% if page.url == item.link %}style="color: red;"{% endif %}>
           {{ item.name }}
         </a>
+        {% endif %}
       {% endfor %}
     </nav>
     <main id="content" class="main-content" role="main">
       {{ content }}
       <footer class="site-footer">
-        {% include footer.html %}       
+        {% include footer.html %}
       </footer>
     </main>
+    <script>
+      document.addEventListener('click', function (e) {
+        document.querySelectorAll('details.nav-group[open]').forEach(function (d) {
+          if (!d.contains(e.target)) d.open = false;
+        });
+      });
+    </script>
   </body>
 </html>
