@@ -22,14 +22,14 @@ $header-bg-color-secondary: $brand-green-light;
 
 // Text
 $section-headings-color: $brand-green-light;
-$body-text-color: $brand-grey-medium;
-$body-link-color: $brand-green;
-$blockquote-text-color: $brand-grey-medium;
+$body-text-color: #d8d8d8;
+$body-link-color: $brand-green-light;
+$blockquote-text-color: $brand-grey-light;
 
 // Borders
-$border-color: #dce6f0;
-$table-border-color: #e9ebec;
-$hr-border-color: #eff0f1;
+$border-color: rgba(255, 255, 255, 0.12);
+$table-border-color: rgba(255, 255, 255, 0.08);
+$hr-border-color: rgba(255, 255, 255, 0.12);
 
 // Breakpoints
 $large-breakpoint: 64em;

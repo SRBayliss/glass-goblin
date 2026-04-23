@@ -27,7 +27,7 @@
 
 nav {
   padding: 0;
-  background-color: variables.$brand-grey-dark;
+  background-color: transparent;
   display: flex;
   justify-content: center;
   align-items: stretch;
@@ -42,8 +42,11 @@ nav {
   }
 
   a:hover {
-    background-color: variables.$brand-yellow;
-    color: variables.$brand-black;
+    background: radial-gradient(ellipse at center,
+      rgba(150, 255, 120, 0.65) 0%,
+      rgba(126, 217, 124, 0.25) 55%,
+      rgba(126, 217, 124, 0) 100%);
+    color: #ffffff;
     text-decoration: none;
   }
 
@@ -66,8 +69,11 @@ nav {
       }
 
       &:hover {
-        background-color: variables.$brand-yellow;
-        color: variables.$brand-black;
+        background: radial-gradient(ellipse at center,
+          rgba(150, 255, 120, 0.65) 0%,
+          rgba(126, 217, 124, 0.25) 55%,
+          rgba(126, 217, 124, 0) 100%);
+        color: #ffffff;
       }
     }
 
@@ -81,13 +87,14 @@ nav {
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      background-color: variables.$brand-grey-dark;
+      background-color: transparent;
       z-index: 10;
     }
 
     > ul li {
       margin: 0;
       white-space: nowrap;
+      border-top: solid 1px variables.$hr-border-color;
     }
 
     > ul a {
@@ -100,10 +107,18 @@ nav {
 body {
   padding: 0;
   margin: 0;
+  min-height: 100vh;
   font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: variables.$body-text-color;
+  background-color: #0a0a12;
+  background-image:
+    radial-gradient(ellipse 70% 55% at 50% 18%, rgba(60, 30, 200, 0.55), transparent 65%),
+    radial-gradient(ellipse 80% 50% at 50% 80%, rgba(57, 190, 55, 0.35), transparent 70%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, rgba(0, 0, 0, 0.55), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 #skip-to-content {
@@ -180,8 +195,8 @@ a {
 .page-header {
   color: variables.$header-heading-color;
   text-align: center;
-  background-color: variables.$header-bg-color;
-  background-image: linear-gradient(120deg, variables.$header-bg-color-secondary, variables.$header-bg-color);
+  background-color: transparent;
+  background-image: none;
 
   @include large {
     padding: 5rem 6rem;
