@@ -3,15 +3,14 @@ layout: no-nav
 title: Glass Goblin
 ---
 
-## Welcome to Glass Goblin
+## _Gorgeous antique and glowing glass, radioactive curios and uranium jewellery_
+### _All lovingly chosen and carefully curated by me, Glass Goblin_
 
-The goblin cave is still under construction…in the meantime I have plenty of other places you can find me!
+---
 
-### Facebook
+Sit tight, the goblin cave is currently under construction and coming soon…in the meantime I have plenty of other places you can find me!
 
-Be among the first to buy! I list pieces for sale on Facebook and Instagram first, so make sure you’re following me on socials.
-
-### Instagram
+### Facebook & Instagram
 
 Be among the first to buy! I list pieces for sale on Facebook and Instagram first, so make sure you’re following me on socials.
 
@@ -25,4 +24,4 @@ My Vinted account - follow Glass Goblin on Vinted when I list something new.
 
 ### WhatsApp Channel
 
-Launching soon - get a periodic message in advance of beautiful pieces being listed on socials.
+Get a periodic message in advance of beautiful pieces being listed on socials. If you're already on your phone, sign up [here‎](https://whatsapp.com/channel/0029VbAnmlqId7nTDqcPfw2K), otherwise scan the QR code below.

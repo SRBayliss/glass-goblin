@@ -5,3 +5,4 @@ permalink: /gghq
 ---
 Glass Goblin HQ
 
+{% include calendly.html %}
