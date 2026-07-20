@@ -706,3 +706,129 @@ a {
   border-radius: 1rem;
   font-size: 0.9rem;
 }
+
+// Shop listing — grid of product cards (spans styled as blocks to avoid the theme's
+// centred h2/p rules). See pages/shop.md.
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin: 2rem 0;
+
+  .shop-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid variables.$border-color;
+    border-radius: 0.6rem;
+    background-color: rgba(variables.$brand-white, 0.03);
+    color: variables.$body-text-color;
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      border-color: rgba(variables.$brand-green, 0.6);
+      text-decoration: none;
+    }
+  }
+
+  .shop-card__image {
+    position: relative;
+    display: block;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .shop-card--sold .shop-card__image img { opacity: 0.6; }
+
+  .shop-card__badge {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: variables.$brand-white;
+    background-color: variables.$brand-red;
+  }
+
+  .shop-card__body {
+    display: block;
+    padding: 0.75rem 0.9rem 1rem;
+  }
+
+  .shop-card__title {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 1.05rem;
+    color: variables.$section-headings-color;
+  }
+
+  .shop-card__price {
+    display: block;
+    font-weight: bold;
+    color: variables.$brand-secondary;
+  }
+}
+
+// Purchase actions + shipping note (product page).
+.product {
+  .buy-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 22rem;
+    margin: 1.5rem 0;
+  }
+
+  .buy-btn {
+    display: block;
+    padding: 0.7rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.4rem;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter 0.2s ease, background-color 0.2s ease;
+
+    &:hover { filter: brightness(1.08); text-decoration: none; }
+  }
+
+  .buy-btn--primary { color: variables.$brand-black; background-color: variables.$brand-green; }
+
+  .buy-btn--paypal { color: variables.$brand-white; background-color: variables.$brand-blue; }
+
+  .buy-btn--invoice {
+    color: variables.$body-link-color;
+    background-color: transparent;
+    border-color: variables.$border-color;
+
+    &:hover { background-color: rgba(variables.$brand-white, 0.06); }
+  }
+
+  .buy-buttons__sold {
+    margin: 1.5rem 0;
+    text-align: left;
+    font-weight: bold;
+    color: variables.$blockquote-text-color;
+  }
+
+  .product-shipping {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    text-align: left;
+    color: variables.$blockquote-text-color;
+  }
+}
