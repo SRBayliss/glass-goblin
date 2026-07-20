@@ -1,6 +1,7 @@
 # E-commerce integration — v1 implementation plan
 
-Status: **Phase 0 complete** (2026-07-20); Phases 1–4 pending
+Status: **Phases 0–1 complete** (2026-07-20), deployed to the test fork, runbook scaffolded.
+**Phase 2 (payment wiring) is next** — start there.
 Created: 2026-07-11
 Supporting investigation: `.investigations/ecommerce-integration.md`
 Security review (payment manipulation): folded into the phases below; findings tagged inline
@@ -118,6 +119,13 @@ metadata; frosted nav dropdown + nav restructure; per-item stock display. Catalo
 composite cards with price/stock text baked in.
 
 ### Phase 2 — Payment wiring and runbook
+
+> **▶ Pick up here (next session).** Phases 0–1 are done and live on the test fork; the runbook +
+> per-item checklist are scaffolded in `.docs/`. Remaining Phase 2 work is mostly the operator's:
+> create the Stripe Payment Links + PayPal hosted buttons in your own accounts, paste the URLs into
+> each `_products/*.md` (`stripe_url` / `paypal_url`), then verify a per-item test purchase. While
+> wiring `gg-0002`/`gg-0003`, also set their **real prices** (currently placeholders).
+
 - [ ] **Stripe:** create a product/price per item, create a Payment Link, enable shipping-address
       collection. Currency **GBP** (M2). Bind shipping to the charge — bundle it into the price
       or configure a Stripe **shipping rate**; never rely on collecting it out-of-band (M3).
@@ -135,8 +143,10 @@ composite cards with price/stock text baked in.
       issued manually. The prefilled `mailto` (SKU + title) is buyer-editable — the operator must
       issue the invoice from their **own catalogue lookup of the SKU**, never from figures in the
       buyer's email (M4).
-- [ ] Write a short **runbook** in `.docs/` (dot-folder, not published) covering: list an item,
-      mark it sold, and issue an invoice. Include the security rules:
+- [x] **Runbook scaffolded** in `.docs/` (not published): `shop-runbook.md` (list / sell / retire,
+      Stripe/PayPal/Monzo setup, go-live checklist, security rules inline) + `product-checklist.md`
+      (per-item template + current-catalogue wiring-status table). Finalise as links are created.
+      It must carry these security rules:
       - **Success redirect ≠ proof of payment.** Confirm every sale in the Stripe/PayPal
         dashboard/email; never trigger fulfilment (or auto-mark-sold) from a buyer landing on a
         thank-you page — its URL/params are forgeable (H4).
@@ -168,6 +178,40 @@ composite cards with price/stock text baked in.
   above is designed so this is a clean add.
 - **Cross-posting hub** (Shopify Basic + Marketplace Connect, or a multichannel lister) — see the
   investigation's phase-2 analysis; revisit when safely cross-listing unique stock is the goal.
+
+---
+
+## Build, deployment & conventions (notes from the 2026-07-20 build)
+
+**Environments & deploy**
+- `origin` = `SRBayliss/glass-goblin` — the operator's **test fork**. Deploys via GitHub Actions
+  (`.github/workflows/jekyll.yml`) to a **project page** at `https://srbayliss.github.io/glass-goblin/`.
+- `upstream` = `smolpotatoes/glass-goblin` — production. Go-live (Phase 3) = a **PR from the fork's
+  `main` to `smolpotatoes`**.
+- Rhythm: commit → push `main` to `origin` → verify on the test Pages site.
+- **Do NOT set `baseurl` in `_config.yml`.** The Actions build injects `--baseurl` from
+  `actions/configure-pages` (`base_path`) — so it's `/glass-goblin` on the fork's project page and
+  empty on production's root domain automatically. Local `jekyll serve` uses an empty baseurl (correct
+  for localhost). A hardcoded baseurl would break one of the two targets.
+
+**Conventions**
+- SKUs: one-offs use `gg-NNNN`; bead lines reuse the maker's own catalogue codes (`b015`, `b025`, …)
+  as the SKU/filename, since those are what the operator recognises for orders.
+- Product images: `assets/products/<sku>-N.jpg`. Invoice enquiries go to `hello@glassgoblin.co.uk`.
+- Gallery/lightbox: `assets/js/product-gallery.js`. Shop filtering: `assets/js/shop-filter.js`
+  (facets driven by each product's `category` + `tags`). Both hand-rolled, no dependencies.
+
+**Catalogue as of 2026-07-20 (8 products):** tiara `gg-0001`; rings `gg-0002`/`gg-0003`; beads
+`b015`/`b016`/`b020`/`b025`/`b030`. Open data caveats (see the Phase 1.5 note): placeholder ring
+prices; ring photos show both rings together; bead images are composite cards with baked-in
+price/stock text; not all source photos were pulled (post 1: 5 of 8; beads post had a "+6" that may
+hide 1–2 more bead types).
+
+**Sourcing product data from Facebook (reusable method).** The operator's FB posts are login-walled
+to scrapers. With a logged-in Chrome (Claude-in-Chrome MCP): open a post's photo theatre, step
+through with the arrow key reading each photo's `fbid` from the URL, then download full-res via
+`https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=<fbid>` (unauthenticated, no token).
+Read captions from the post; per-bead detail is baked into the composite images.
 
 ---
 
