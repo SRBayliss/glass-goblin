@@ -122,21 +122,32 @@ nav {
     > ul {
       position: absolute;
       top: 100%;
-      left: 0;
-      margin: 0;
-      padding: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0.35rem 0 0;
+      padding: 0.3rem;
       list-style: none;
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      background-color: transparent;
-      z-index: 10;
+      min-width: max-content;
+      // Frosted opaque panel so page content no longer shows through the menu.
+      background-color: rgba(variables.$body-bg-color, 0.82);
+      backdrop-filter: blur(12px) saturate(1.2);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2);
+      border: 1px solid variables.$border-color;
+      border-radius: 0.6rem;
+      box-shadow: 0 10px 28px rgba(variables.$brand-black, 0.5);
+      z-index: 20;
     }
 
     > ul li {
       margin: 0;
       white-space: nowrap;
-      border-top: solid 1px variables.$hr-border-color;
+    }
+
+    > ul li + li {
+      border-top: solid 1px variables.$table-border-color;
     }
 
     > ul a {
@@ -780,6 +791,49 @@ a {
     font-weight: bold;
     color: variables.$brand-secondary;
   }
+
+  .shop-card[hidden] { display: none; }
+}
+
+// Shop filter/search bar (client-side — see assets/js/shop-filter.js).
+.shop-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: center;
+  margin: 1.5rem 0;
+
+  input[type="search"],
+  input[type="number"],
+  select {
+    padding: 0.5rem 0.7rem;
+    color: variables.$body-text-color;
+    background-color: rgba(variables.$brand-white, 0.06);
+    border: 1px solid variables.$border-color;
+    border-radius: 0.4rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+
+  input[type="search"] { min-width: 12rem; }
+  input[type="number"] { width: 6.5rem; }
+
+  option { color: variables.$brand-black; }
+}
+
+.shop-filter__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: variables.$body-text-color;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.shop-empty {
+  text-align: center;
+  color: variables.$blockquote-text-color;
 }
 
 // Purchase actions + shipping note (product page).
@@ -830,5 +884,18 @@ a {
     font-size: 0.9rem;
     text-align: left;
     color: variables.$blockquote-text-color;
+  }
+
+  .product-price__unit {
+    font-size: 1rem;
+    font-weight: normal;
+    color: variables.$blockquote-text-color;
+  }
+
+  .product-stock {
+    margin: -0.25rem 0 1rem;
+    text-align: left;
+    font-size: 0.9rem;
+    color: variables.$section-headings-color;
   }
 }
