@@ -1,6 +1,6 @@
 # E-commerce integration — v1 implementation plan
 
-Status: **Planned** (awaiting go-ahead to implement)
+Status: **Phase 0 complete** (2026-07-20); Phases 1–4 pending
 Created: 2026-07-11
 Supporting investigation: `.investigations/ecommerce-integration.md`
 Security review (payment manipulation): folded into the phases below; findings tagged inline
@@ -79,16 +79,24 @@ Fields are ours; nothing here is shaped around a third-party platform.
 
 ## Phases
 
-### Phase 0 — Data model and config
-- [ ] Add the `products` collection + defaults to `_config.yml`.
-- [ ] Create one real sample product file in `_products/` to build against.
-- [ ] Add `assets/products/` for product images.
+### Phase 0 — Data model and config ✅ (done 2026-07-20)
+- [x] Add the `products` collection + defaults to `_config.yml`.
+- [x] Create one real sample product file in `_products/` (`gg-0001`, uranium glass vase) to build against.
+- [x] Add `assets/products/` for product images (holds an on-brand placeholder SVG until real photos land).
 - **Done when:** `bundle exec jekyll build` succeeds and the sample product renders at
-  `/shop/<sku>`.
+  `/shop/<sku>`. ✅ Verified — builds clean; renders at `/shop/gg-0001` (output `_site/shop/gg-0001.html`).
+
+**Correction to the plan:** Phase 0 could not satisfy its own build check in isolation — the
+`layout: product` default points at a layout not created until Phase 1, so the build fails with
+"Could not find layout 'product'" until it exists. A **minimal** `_layouts/product.html` (fields +
+body only; no buttons, shipping note, or styling) was therefore added in Phase 0, and Phase 1 now
+**expands** it rather than creating it. Also added a `.gitignore` (`_site/`, `vendor/`, caches) —
+the repo had none and the local build produces those artifacts.
 
 ### Phase 1 — Templates and styling
-- [ ] `_layouts/product.html` — image(s), title, price, condition, description body, the
-      buy-buttons include, and the existing Royal Mail shipping note.
+- [ ] `_layouts/product.html` — **expand the minimal Phase 0 layout** to add the buy-buttons
+      include and the existing Royal Mail shipping note (image(s), title, price, condition, and
+      description body already render).
 - [ ] Rework `pages/shop.md` into a **grid listing** iterating `site.products`: card per item
       (image, title, price, status), linking to the product page. Show sold items as "Sold"
       (or filter them out — see retire workflow).
