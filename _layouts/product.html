@@ -33,12 +33,16 @@ layout: default
   {%- endif -%}
 
   {%- if product.price -%}
-  <p class="product-price">{% include price.html amount=product.price %}</p>
+  <p class="product-price">{% include price.html amount=product.price %}{% if product.quantity and product.quantity > 1 %} <span class="product-price__unit">each</span>{% endif %}</p>
   {%- endif -%}
 
   <p class="product-status product-status--{{ product.status | default: 'available' }}">
     {%- if product.status == 'sold' -%}Sold{%- else -%}Available{%- endif -%}
   </p>
+
+  {%- if product.quantity and product.quantity > 1 and product.status != 'sold' -%}
+  <p class="product-stock">{{ product.quantity }} in stock</p>
+  {%- endif -%}
 
   {% include buy-buttons.html product=product %}
 
