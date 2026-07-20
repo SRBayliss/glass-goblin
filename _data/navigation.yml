@@ -1,14 +1,10 @@
-- name: Home
-  link: home
-- group: Shop at Glass Goblin
+- name: Online shop
+  link: shop
+- group: Shop in person
   items:
-    - name: Online shop
-      link: shop
-    - name: Glass Goblin Headquaters
+    - name: Glass Goblin Headquarters
       link: gghq
     - name: Gloucester Antiques Centre
       link: gloucester-antiques
-- name: Example
-  link: example
 - name: About
   link: about
