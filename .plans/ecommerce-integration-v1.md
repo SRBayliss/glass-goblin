@@ -93,23 +93,29 @@ body only; no buttons, shipping note, or styling) was therefore added in Phase 0
 **expands** it rather than creating it. Also added a `.gitignore` (`_site/`, `vendor/`, caches) —
 the repo had none and the local build produces those artifacts.
 
-### Phase 1 — Templates and styling
-- [ ] `_layouts/product.html` — **expand the minimal Phase 0 layout** to add the buy-buttons
-      include and the existing Royal Mail shipping note (image(s), title, price, condition, and
-      description body already render).
-- [ ] Rework `pages/shop.md` into a **grid listing** iterating `site.products`: card per item
-      (image, title, price, status), linking to the product page. Show sold items as "Sold"
-      (or filter them out — see retire workflow).
-- [ ] `_includes/buy-buttons.html` — conditional rendering:
-      - `status: sold` → "Sold" badge, no buttons.
-      - available → Stripe button (primary) + PayPal button (alternative) + a "Pay by bank
-        transfer — request an invoice" CTA linking to the Contact page / a `mailto:` prefilled
-        with SKU + title. The invoice CTA shows on every available item.
-- [ ] SCSS: product grid, cards, buttons, sold badge — **classes only, colours from
-      `_variables.scss`**; add new colour variables if needed.
-- [ ] Confirm the Shop nav entry in `_data/navigation.yml` points at the listing.
-- **Done when:** shop grid and a product page render correctly; buttons appear/hide per
-      `status`; all three purchase options show on available items.
+### Phase 1 — Templates and styling ✅ (done 2026-07-20)
+- [x] `_layouts/product.html` — expanded: buy-buttons include + Royal Mail shipping note (and,
+      beyond the original scope, a multi-photo mosaic + hand-rolled lightbox, subtitle, a
+      specifications block, and a stock count + "each" pricing for qty>1 lines).
+- [x] `pages/shop.md` — grid listing over `site.products` (card = image, title, price); sold
+      items get a "Sold" badge and dimmed image; each card links to its product page.
+- [x] `_includes/buy-buttons.html` — sold → no buttons ("This piece has sold."); available →
+      Stripe (primary, when `stripe_url` set) + PayPal (when `paypal_url` set) + a bank-transfer
+      invoice `mailto:` (hello@glassgoblin.co.uk, prefilled with title + SKU) on every available item.
+- [x] SCSS: product grid, cards, buttons, sold badge — classes only, colours from `_variables.scss`.
+- [x] Shop nav entry points at the listing (later restructured: "Online shop" top-level +
+      "Shop in person" group; frosted dropdown panel).
+- **Done when:** shop grid + product page render ✅; buttons appear/hide per `status` ✅;
+      **all three purchase options show on available items** — ⏳ today only the invoice CTA shows;
+      the Stripe & PayPal buttons are wired and render as soon as their links exist (verified with
+      mock links). This last criterion is therefore gated on **Phase 2**, not a Phase 1 gap.
+
+**Phase 1.5 extras (done, beyond the original plan):** mosaic gallery + lightbox; client-side shop
+search/filter (search, category, max price, in-stock, glows-under-UV) backed by `category`/`tags`
+metadata; frosted nav dropdown + nav restructure; per-item stock display. Catalogue expanded to
+**8 products** (tiara, 2 rings, 5 bead lines). Data caveats still open: ring prices are placeholders
+(no price in source post); ring photos show both rings together; bead images are the maker's
+composite cards with price/stock text baked in.
 
 ### Phase 2 — Payment wiring and runbook
 - [ ] **Stripe:** create a product/price per item, create a Payment Link, enable shipping-address
