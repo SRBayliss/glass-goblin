@@ -1,0 +1,22 @@
+{%- comment -%}
+  Purchase options (see .plans/ecommerce-integration-v1.md). Charge authority lives on
+  Stripe/PayPal — front matter is cosmetic. The Stripe and PayPal buttons render only when
+  their link is present (added in Phase 2); the bank-transfer invoice enquiry shows on every
+  available item. Sold items show no buttons. Usage: {% include buy-buttons.html product=product %}
+{%- endcomment -%}
+{%- assign product = include.product | default: page -%}
+<div class="buy-buttons">
+{%- if product.status == 'sold' -%}
+  <p class="buy-buttons__sold">This piece has sold.</p>
+{%- else -%}
+  {%- if product.stripe_url -%}
+  <a class="buy-btn buy-btn--primary" href="{{ product.stripe_url }}" target="_blank" rel="nofollow noopener">Buy now — secure card checkout</a>
+  {%- endif -%}
+  {%- if product.paypal_url -%}
+  <a class="buy-btn buy-btn--paypal" href="{{ product.paypal_url }}" target="_blank" rel="nofollow noopener">Pay with PayPal</a>
+  {%- endif -%}
+  {%- capture mail_subject -%}Invoice request: {{ product.title }} ({{ product.sku }}){%- endcapture -%}
+  {%- capture mail_body -%}Hi Glass Goblin, please could you send a bank-transfer invoice for {{ product.title }} ({{ product.sku }}). Thank you.{%- endcapture -%}
+  <a class="buy-btn buy-btn--invoice" href="mailto:hello@glassgoblin.co.uk?subject={{ mail_subject | uri_escape }}&amp;body={{ mail_body | uri_escape }}">Pay by bank transfer — request an invoice</a>
+{%- endif -%}
+</div>

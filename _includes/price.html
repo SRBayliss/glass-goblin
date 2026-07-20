@@ -1,0 +1,5 @@
+{%- comment -%}Formats a number as GBP with two decimals, e.g. 45.0 -> £45.00. Usage: {% include price.html amount=product.price %}{%- endcomment -%}
+{%- assign amount = include.amount -%}
+{%- assign whole = amount | floor -%}
+{%- assign frac = amount | minus: whole | times: 100 | round -%}
+£{{ whole }}.{% if frac < 10 %}0{% endif %}{{ frac }}

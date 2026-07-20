@@ -3,12 +3,11 @@ layout: default
 ---
 {%- comment -%}
   Product page layout (see .plans/ecommerce-integration-v1.md).
-  Supports rich listings: a subtitle, a multi-photo gallery, a flexible specification
-  block (`details:` = list of {label, value} rows, plus the first-class `condition` field),
-  a formatted GBP price, an availability badge, and a markdown description body.
-  Still to come in Phase 1: the buy-buttons include and the Royal Mail shipping note.
-  Colours live in _sass/_variables.scss; styling lives in
-  _sass/_jekyll-theme-glassgoblin.scss under `.product`.
+  Renders a rich listing: subtitle, multi-photo mosaic + lightbox (product-gallery.js),
+  formatted GBP price, availability badge, purchase actions (buy-buttons include),
+  a flexible specification block (details rows + condition), description, and shipping note.
+  Charge authority lives on Stripe/PayPal, never in front matter (the plan's security principle).
+  Colours are defined in _sass/_variables.scss; styling lives in _sass/_jekyll-theme-glassgoblin.scss.
 {%- endcomment -%}
 {%- assign product = page -%}
 <article class="product">
@@ -34,16 +33,14 @@ layout: default
   {%- endif -%}
 
   {%- if product.price -%}
-  <p class="product-price">
-    {%- assign whole = product.price | floor -%}
-    {%- assign frac = product.price | minus: whole | times: 100 | round -%}
-    £{{ whole }}.{% if frac < 10 %}0{% endif %}{{ frac }}
-  </p>
+  <p class="product-price">{% include price.html amount=product.price %}</p>
   {%- endif -%}
 
   <p class="product-status product-status--{{ product.status | default: 'available' }}">
     {%- if product.status == 'sold' -%}Sold{%- else -%}Available{%- endif -%}
   </p>
+
+  {% include buy-buttons.html product=product %}
 
   {%- if product.condition or product.details -%}
   <dl class="product-details">
@@ -68,5 +65,7 @@ layout: default
     {{ content }}
   </div>
   {%- endif -%}
+
+  <p class="product-shipping">Shipped with Royal Mail tracked services — usually Tracked 48, with tracking emailed on dispatch. High-value and international orders may vary.</p>
 </article>
 <script src="{{ '/assets/js/product-gallery.js' | relative_url }}" defer></script>
