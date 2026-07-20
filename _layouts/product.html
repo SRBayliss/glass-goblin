@@ -1,0 +1,72 @@
+---
+layout: default
+---
+{%- comment -%}
+  Product page layout (see .plans/ecommerce-integration-v1.md).
+  Supports rich listings: a subtitle, a multi-photo gallery, a flexible specification
+  block (`details:` = list of {label, value} rows, plus the first-class `condition` field),
+  a formatted GBP price, an availability badge, and a markdown description body.
+  Still to come in Phase 1: the buy-buttons include and the Royal Mail shipping note.
+  Colours live in _sass/_variables.scss; styling lives in
+  _sass/_jekyll-theme-glassgoblin.scss under `.product`.
+{%- endcomment -%}
+{%- assign product = page -%}
+<article class="product">
+  <h1 class="product-title">{{ product.title }}</h1>
+  {%- if product.subtitle -%}
+  <p class="product-subtitle">{{ product.subtitle }}</p>
+  {%- endif -%}
+
+  {%- if product.images and product.images != empty -%}
+  {%- assign img_count = product.images | size -%}
+  {%- assign max_tiles = 5 -%}
+  {%- capture images_json -%}[{% for image in product.images %}"{{ image | relative_url }}"{% unless forloop.last %},{% endunless %}{% endfor %}]{%- endcapture -%}
+  <div class="product-gallery" data-count="{% if img_count < max_tiles %}{{ img_count }}{% else %}{{ max_tiles }}{% endif %}" data-images='{{ images_json }}'>
+    {%- for image in product.images limit: max_tiles -%}
+    <a class="product-gallery__tile" href="{{ image | relative_url }}" data-index="{{ forloop.index0 }}" aria-label="View photo {{ forloop.index }} of {{ img_count }}">
+      <img src="{{ image | relative_url }}" alt="{{ product.title }} — photo {{ forloop.index }}" loading="lazy">
+      {%- if forloop.index == max_tiles and img_count > max_tiles -%}
+      <span class="product-gallery__more" aria-hidden="true">+{{ img_count | minus: max_tiles }}</span>
+      {%- endif -%}
+    </a>
+    {%- endfor -%}
+  </div>
+  {%- endif -%}
+
+  {%- if product.price -%}
+  <p class="product-price">
+    {%- assign whole = product.price | floor -%}
+    {%- assign frac = product.price | minus: whole | times: 100 | round -%}
+    £{{ whole }}.{% if frac < 10 %}0{% endif %}{{ frac }}
+  </p>
+  {%- endif -%}
+
+  <p class="product-status product-status--{{ product.status | default: 'available' }}">
+    {%- if product.status == 'sold' -%}Sold{%- else -%}Available{%- endif -%}
+  </p>
+
+  {%- if product.condition or product.details -%}
+  <dl class="product-details">
+    {%- if product.condition -%}
+    <div class="product-details__row">
+      <dt>Condition</dt>
+      <dd>{{ product.condition }}</dd>
+    </div>
+    {%- endif -%}
+    {%- for detail in product.details -%}
+    <div class="product-details__row">
+      <dt>{{ detail.label }}</dt>
+      <dd>{{ detail.value }}</dd>
+    </div>
+    {%- endfor -%}
+  </dl>
+  {%- endif -%}
+
+  {%- assign body = content | strip -%}
+  {%- if body != '' -%}
+  <div class="product-description">
+    {{ content }}
+  </div>
+  {%- endif -%}
+</article>
+<script src="{{ '/assets/js/product-gallery.js' | relative_url }}" defer></script>
