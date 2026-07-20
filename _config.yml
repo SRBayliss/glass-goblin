@@ -2,3 +2,18 @@ google_analytics: ""
 remote_theme: pages-themes/cayman@v0.2.0
 plugins:
 - jekyll-remote-theme
+
+# Product catalogue — a Jekyll collection we control (core Jekyll, works in GitHub Pages safe mode).
+# Each _products/<sku>.md renders its own page at /shop/<sku>. Added for e-commerce Phase 0;
+# see .plans/ecommerce-integration-v1.md.
+collections:
+  products:
+    output: true
+    permalink: /shop/:name
+
+defaults:
+  - scope:
+      path: ""
+      type: products
+    values:
+      layout: product
