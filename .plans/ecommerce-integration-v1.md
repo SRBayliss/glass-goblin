@@ -16,7 +16,14 @@ no backend, no change to free GitHub Pages hosting. Catalogue shape is ours to c
 ## Decisions this plan implements
 
 - Checkout: **embedded buy buttons** on Jekyll product pages, hosted checkout off-site.
-- Payments: **Stripe Payment Links (primary)** + **PayPal (alternative)** on every item.
+- Payments **by item type** (decided 2026-08-02):
+  - **One-off items (`gg-NNNN`, qty 1): Stripe only.** Cleanest deactivation API in both
+    directions, lowest per-sale fees, and — critically — it makes the **cross-provider oversell
+    race structurally impossible**: one unique unit listed on two independent checkouts can be
+    bought on both before either self-closes, so a single provider per one-off removes that risk
+    at the root rather than merely narrowing the window.
+  - **Repeatable lines (beads, qty >1): Stripe + PayPal both allowed.** Cross-provider oversell
+    here is soft (backorder / remake), so buyer choice outweighs the small risk.
 - **Monzo bank-transfer invoice** option shown on **every available item**.
 - Catalogue is a **Jekyll collection we control**; bulk listing handled by our own script later.
 - No multi-item cart in v1 (one item per checkout). Accepted.

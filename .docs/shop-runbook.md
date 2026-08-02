@@ -14,6 +14,17 @@
 - Buttons render automatically: an **available** item shows Stripe (if `stripe_url` set) + PayPal
   (if `paypal_url` set) + the bank-transfer invoice enquiry (always). A **sold** item shows no buttons.
 
+## Which providers per item (policy, decided 2026-08-02)
+
+- **One-off items (`gg-NNNN`, qty 1): Stripe only** — set `stripe_url`, leave `paypal_url` blank.
+  A unique unit listed on two independent checkouts can be bought on *both* before either
+  self-closes (cross-provider oversell); one provider per one-off removes that risk entirely, and
+  Stripe is the cheaper fee + has the cleaner deactivation API.
+- **Repeatable lines (beads, qty >1): Stripe + PayPal both fine** — oversell here is soft
+  (backorder / remake), so buyer choice wins.
+- Known exception: **`gg-0001` is intentionally on PayPal** as a validated demo of the one-off
+  PayPal path; switch it to Stripe-only at real go-live.
+
 ## List a new item
 
 1. Add photos to `assets/products/` as `<sku>-1.jpg`, `<sku>-2.jpg`, …
@@ -44,9 +55,12 @@
   public Payment Link URL is committed (L2). (The future bulk-listing script reads the secret from
   an environment variable.)
 
-## PayPal button (per item)
+## PayPal button (repeatable lines only — see provider policy above)
 
+- Only for repeatable lines (qty >1). One-offs are Stripe-only; do not create a PayPal button for them.
 - Create a **server-side hosted button** (button ID references a price stored at PayPal).
+- Enable **inventory tracking with over-sell OFF** so the button self-closes at zero stock and
+  redirects to its `sold_out_url` (point that at your shop, not paypal.com).
 - ❌ Do **not** use a legacy amount-in-form button or a PayPal.me link as a buy button — both let the
   buyer set their own amount (C1).
 - Paste into `paypal_url`.
