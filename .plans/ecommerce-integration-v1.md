@@ -180,6 +180,11 @@ composite cards with price/stock text baked in.
       item purchasable end-to-end.
 
 ### Phase 4 — Deferred (not v1)
+- **Sold-state reconciler + webhooks** — keep `status:` in sync with the providers automatically.
+  Full spec: `.plans/sold-state-reconciler-v1.md` (4a = scheduled Action polling Stripe's `active`
+  flag; 4b = optional webhook trigger for low latency). Non-safety-critical: money-safety is already
+  provider-side, so this only improves label freshness. `gg-0002`'s already-deactivated demo link is
+  a ready-made acceptance test.
 - Bulk-listing **script**: reads a source (CSV/inline) and, per item, creates a Stripe product +
   Payment Link via the Stripe API, then writes the `_products/<sku>.md` file. The v1 file shape
   above is designed so this is a clean add.
