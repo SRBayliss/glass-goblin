@@ -113,7 +113,9 @@ FRONT_MATTER = /\A(---[ \t]*\r?\n)(.*?\r?\n)(---[ \t]*\r?\n)/m
 Product = Struct.new(:path, :fields, :opener, :front_matter, :closer, :body)
 
 def load_product(path)
-  raw = File.read(path)
+  # Read the bytes rather than the text: Windows opens files in text mode by default and
+  # would hand back CRLF as LF, so a rewrite would silently retype the whole file.
+  raw = File.binread(path).force_encoding('UTF-8')
   match = raw.match(FRONT_MATTER)
   raise ReconcileError, "#{File.basename(path)} has no front matter" if match.nil?
 
@@ -124,7 +126,9 @@ end
 # Rewrite a top-level scalar field in the front matter, keeping any trailing comment.
 # Only column-0 keys match, so nested list entries (details:, images:) are untouched.
 def set_field(front_matter, key, value)
-  pattern = /^(#{Regexp.escape(key)}:)([^\n#]*)(#[^\n]*)?$/
+  # The trailing \r is captured and put back rather than matched as content: without that
+  # a CRLF file loses it on any field that has no inline comment to carry it.
+  pattern = /^(#{Regexp.escape(key)}:)([^\n\r#]*)(#[^\n\r]*)?(\r?)$/
   unless front_matter.match?(pattern)
     newline = front_matter.include?("\r\n") ? "\r\n" : "\n"
     return "#{front_matter}#{key}: #{value}#{newline}"
@@ -135,14 +139,16 @@ def set_field(front_matter, key, value)
     padding = Regexp.last_match(2).to_s
     # Keep the column the comment sat in, so the file's alignment survives.
     gap = comment ? ' ' * [padding.length - value.to_s.length - 1, 1].max : ''
-    "#{Regexp.last_match(1)} #{value}#{gap}#{comment}"
+    "#{Regexp.last_match(1)} #{value}#{gap}#{comment}#{Regexp.last_match(4)}"
   end
 end
 
 def mark_sold(product)
   updated = set_field(product.front_matter, 'status', 'sold')
   updated = set_field(updated, 'quantity', 0)
-  File.write(product.path, "#{product.opener}#{updated}#{product.closer}#{product.body}")
+  # binwrite, so Ruby does not translate newlines on the way out — the bytes we assembled
+  # are the bytes that should land on disk.
+  File.binwrite(product.path, "#{product.opener}#{updated}#{product.closer}#{product.body}")
 end
 
 # --- Reconcile ---------------------------------------------------------------
