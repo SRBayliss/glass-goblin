@@ -114,14 +114,13 @@ class SecretsTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
   TEXT_FILES = /\.(md|markdown|ya?ml|html|js|json|rb|scss|css|txt|webmanifest)\z|\A\.[^.]+\z/
 
-  # Assembled rather than written out, so this file does not match its own patterns —
-  # it is itself tracked, and a literal would make the scan fail on nothing but itself.
+  # Each pattern requires a key-length body, not just a prefix, so the runbooks can name
+  # what a key looks like without tripping this. Written as alternations rather than plain
+  # literals for the same reason — this file is tracked and would otherwise match itself.
   SECRET_PATTERNS = [
-    %w[sk live].join('_'),      # Stripe live secret key
-    %w[rk live].join('_'),      # Stripe live restricted key
-    %w[sk test].join('_'),      # Stripe test secret key
-    %w[whsec].join + '_',       # Stripe webhook signing secret
-    ('-' * 5) + 'BEGIN'         # any PEM private key, e.g. the reconciler App's
+    /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}/, # Stripe secret and restricted keys
+    /\bwhsec_[A-Za-z0-9]{16,}/,                   # Stripe webhook signing secret
+    /#{'-' * 5}BEGIN [A-Z ]*PRIVATE KEY/          # PEM private key, e.g. the reconciler App's
   ].freeze
 
   # Only the Payment Link URL is ever committed; the secret key lives in an Actions
@@ -135,7 +134,7 @@ class SecretsTest < Minitest::Test
       next false unless File.file?(path)
 
       contents = File.read(path, encoding: 'BINARY')
-      SECRET_PATTERNS.any? { |pattern| contents.include?(pattern) }
+      SECRET_PATTERNS.any? { |pattern| contents.match?(pattern) }
     end
 
     assert_empty offenders, 'a provider secret looks committed — rotate it at the provider, then remove it'
