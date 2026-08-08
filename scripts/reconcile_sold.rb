@@ -29,6 +29,7 @@
 #   0  ran clean (with or without changes)
 #   1  refused to act, or the Stripe call failed — nothing was written
 
+require 'date' # for the permitted_classes below — not loaded by default on all Rubies
 require 'json'
 require 'net/http'
 require 'set'
