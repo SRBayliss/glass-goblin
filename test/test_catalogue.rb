@@ -114,13 +114,14 @@ class SecretsTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
   TEXT_FILES = /\.(md|markdown|ya?ml|html|js|json|rb|scss|css|txt|webmanifest)\z|\A\.[^.]+\z/
 
-  # Assembled rather than written out, so this file does not match its own patterns.
+  # Assembled rather than written out, so this file does not match its own patterns —
+  # it is itself tracked, and a literal would make the scan fail on nothing but itself.
   SECRET_PATTERNS = [
-    %w[sk live].join('_'),   # Stripe live secret key
-    %w[rk live].join('_'),   # Stripe live restricted key
-    %w[sk test].join('_'),   # Stripe test secret key
-    %w[whsec].join + '_',    # Stripe webhook signing secret
-    '-----BEGIN'             # any PEM private key
+    %w[sk live].join('_'),      # Stripe live secret key
+    %w[rk live].join('_'),      # Stripe live restricted key
+    %w[sk test].join('_'),      # Stripe test secret key
+    %w[whsec].join + '_',       # Stripe webhook signing secret
+    ('-' * 5) + 'BEGIN'         # any PEM private key, e.g. the reconciler App's
   ].freeze
 
   # Only the Payment Link URL is ever committed; the secret key lives in an Actions

@@ -1,12 +1,21 @@
-# Keeps each product's `status:` in step with Stripe.
+# Keeps each product's `status:` in step with Stripe, via a pull request.
 #
 # Stripe deactivates a payment link once it hits its completed-sessions cap, so a link
 # dropping out of the active list means the item has sold. The script derives that and
-# rewrites the front matter; this workflow commits the result and asks Pages to rebuild.
+# rewrites the front matter; this workflow opens a PR with the result and lets it merge
+# itself once the checks pass.
+#
+# Why a PR rather than a push to main: it puts the bot's own commits through exactly the
+# same required checks as a human's, so nothing this workflow writes reaches the live shop
+# unreviewed by CI. The trade-off is that it needs a token that can trigger workflows —
+# the built-in GITHUB_TOKEN deliberately cannot, so a PR it opened would sit with its
+# checks pending forever and never merge. Hence the GitHub App below.
 #
 # Spec: .plans/sold-state-reconciler-v1.md (Phase 4a)
-# Money-safety does not depend on this: a second buyer is blocked at Stripe regardless of
-# what a cached page still says. This only keeps the label fresh.
+# Setup: .docs/shop-runbook.md — App install, secrets, ruleset, auto-merge.
+#
+# Money-safety does not depend on any of this: a second buyer is blocked at Stripe
+# regardless of what a cached page still says. This only keeps the label fresh.
 
 name: Reconcile sold state
 
@@ -33,16 +42,32 @@ concurrency:
   group: reconcile-sold
   cancel-in-progress: false
 
+# The App token does the writing, so the built-in token needs only to read the checkout.
 permissions:
-  contents: write # commit the status change
-  actions: write  # dispatch the Pages build (see the deploy step)
+  contents: read
+
+env:
+  BRANCH: reconcile/sold-state
 
 jobs:
   reconcile:
     runs-on: ubuntu-latest
     steps:
+      # Skipped when the App is not configured; the steps below then fall back to a PAT,
+      # and failing that, refuse to open a PR rather than opening one that cannot merge.
+      - name: Mint a token that can trigger checks
+        id: app-token
+        if: vars.RECONCILE_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RECONCILE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RECONCILE_APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Same identity that will open the PR, so the branch push is attributed to it.
+          token: ${{ steps.app-token.outputs.token || secrets.RECONCILE_PAT || github.token }}
 
       - name: Setup Ruby
         # https://github.com/ruby/setup-ruby/releases/tag/v1.207.0
@@ -51,10 +76,9 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: false # stdlib only — no gems needed
 
-      # This job rewrites the catalogue and commits it without anyone watching, and it
-      # runs whatever is on main — including a change pushed straight there, which the
-      # deploy gate would block from shipping but could not stop from running here.
-      # A red suite must not be allowed to touch a product file.
+      # This job runs whatever is on main every 15 minutes. A change pushed straight there
+      # would be blocked from shipping by the deploy gate, but nothing would stop it
+      # running here. A red suite must not be allowed to touch a product file.
       - name: Run the test suite first
         run: ruby test/all.rb
 
@@ -65,30 +89,71 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           ALLOW_EMPTY_ACTIVE: ${{ inputs.allow_empty_active && '1' || '0' }}
 
-      # The step above just rewrote product files unattended. Re-validating before the
-      # commit means a bad rewrite fails the run instead of landing on main.
-      - name: Re-check the catalogue before committing
+      # The PR's own checks will run these too. Running them here as well means a bad
+      # rewrite fails the run outright instead of becoming a pull request that sits red.
+      - name: Re-check the catalogue
         run: ruby test/all.rb
 
-      - name: Commit and push any changes
-        id: commit
+      - name: Did anything change?
+        id: changes
         run: |
           if git diff --quiet -- _products; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Open or update the pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.RECONCILE_PAT }}
+          BASE: ${{ github.ref_name }}
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::An item has sold, but no App or PAT is configured — a PR opened with" \
+                 "the built-in token would never run its checks, so it could never merge." \
+                 "See .docs/shop-runbook.md."
+            exit 1
+          fi
+
           git config user.name  "reconcile-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # The branch is entirely bot-owned and is rebuilt from the base every run, so a
+          # plain force-push is correct here — there is never anything on it to preserve.
+          git checkout -B "${BRANCH}"
           git add _products
           git commit -m "chore(shop): reconcile sold state from Stripe"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git push --force origin "${BRANCH}"
 
-      # A push made with the built-in GITHUB_TOKEN does not trigger other workflows, so
-      # jekyll.yml's `on: push` will not fire for the commit above. Ask for the build.
-      - name: Trigger the Pages build
-        if: steps.commit.outputs.changed == 'true'
-        run: gh workflow run jekyll.yml --ref "${GITHUB_REF_NAME}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if [ -z "$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number // empty')" ]; then
+            gh pr create --base "${BASE}" --head "${BRANCH}" \
+              --title "chore(shop): reconcile sold state from Stripe" \
+              --body "$(cat <<'BODY'
+          Stripe has deactivated the payment link for the item(s) in this diff, which means
+          they have sold. The reconciler has set `status: sold` and `quantity: 0` to match.
+
+          Opened automatically by `.github/workflows/reconcile-sold.yml`. It merges itself
+          once the checks pass; no action needed unless they go red.
+
+          The sale itself is already safe — Stripe blocks a second buyer at the link. This
+          only updates what the shop page says.
+          BODY
+              )"
+          fi
+
+          # Auto-merge waits for the required checks, so the bot's commits face the same
+          # gate as anyone else's. It cannot be enabled unless the repo allows auto-merge;
+          # warn rather than fail there, because the PR is open and visible either way, and
+          # the alternative is a failure notification every 15 minutes.
+          if ! gh pr merge "${BRANCH}" --auto --squash --delete-branch; then
+            echo "::warning::Could not enable auto-merge — the PR is open and waiting." \
+                 "Enable 'Allow auto-merge' in the repository settings, or merge it by hand."
+          fi
+
+          gh pr view "${BRANCH}" --json url --jq '"Pull request: \(.url)"' >> "$GITHUB_STEP_SUMMARY"
+
+      # No explicit Pages build trigger is needed any more: the merge is performed by the
+      # App (or PAT) identity, and a push from those DOES fire `on: push`, so jekyll.yml
+      # runs itself. Reinstate a `gh workflow run jekyll.yml` step if this ever goes back
+      # to pushing with the built-in GITHUB_TOKEN.

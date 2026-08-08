@@ -101,7 +101,11 @@ yours, and it is the one that matters.
 `scripts/reconcile_sold.rb`, run by `.github/workflows/reconcile-sold.yml` roughly every 15 minutes,
 keeps `status:` in step with Stripe **so you don't have to remember step 2 above**. It asks Stripe
 which payment links are still active; any product whose `stripe_url` has dropped off that list has
-sold out, so it rewrites the file to `status: sold`, `quantity: 0`, commits, and triggers a rebuild.
+sold out, so it rewrites the file to `status: sold`, `quantity: 0` and **opens a pull request**.
+The PR merges itself once the checks pass, and the merge rebuilds the site.
+
+You should see nothing but a green PR appearing and closing on its own. If one sits open, its
+checks failed — that is the system working.
 
 **It is a label-freshness tool, not a money guard.** A second buyer is already blocked at Stripe by
 the link's 1-use cap, whatever a cached page still says. Worst case here is a stale "available"
@@ -120,23 +124,66 @@ What it covers, and what it does not:
 It **never** flips an item back to available. Re-listing is deliberate: new link, restock, re-cap.
 **Manual `status: sold` edits remain the fallback** and are still required for the ❌ rows.
 
+### Why a pull request rather than a direct push
+
+So the bot's own commits go through the same checks as yours. A push straight to `main` skips
+every gate; a PR does not. It costs a couple of minutes of extra latency on a sold badge, which
+is worth nothing next to the risk it removes.
+
+This is the one piece that needs real setup, because of a deliberate GitHub rule: **the built-in
+`GITHUB_TOKEN` cannot trigger workflows.** A PR it opened would sit with its checks pending
+forever and could never merge. So the workflow needs a GitHub App (or a PAT) whose token does
+trigger them.
+
 ### One-time setup
 
 Until step 2 is done the workflow runs but does nothing — it logs "STRIPE_SECRET_KEY is not set —
-skipping" and passes, rather than mailing you a failure every 15 minutes.
+skipping" and passes, rather than mailing you a failure every 15 minutes. Steps 3–6 are only
+needed once something actually sells.
 
-1. Stripe dashboard → **restricted key**, permission **Payment links: read** only (it never writes).
-2. Repo → Settings → Secrets and variables → Actions → new secret **`STRIPE_SECRET_KEY`**.
-3. Repo → Settings → Actions → General → Workflow permissions → **Read and write**. Without this the
-   run cannot commit, whatever the workflow file asks for.
-4. On the **fork**, GitHub disables scheduled workflows by default — open the Actions tab and enable
+1. **Stripe key.** Dashboard → **restricted key**, permission **Payment links: read** only
+   (it never writes).
+2. **Stripe secret.** Repo → Settings → Secrets and variables → Actions → new repository secret
+   **`STRIPE_SECRET_KEY`**.
+3. **GitHub App.** Settings (your account) → Developer settings → GitHub Apps → New GitHub App.
+   Name it anything ("glass-goblin reconciler"); untick Webhook → Active. Under **Repository
+   permissions** grant only **Contents: Read and write** and **Pull requests: Read and write**.
+   Create it, then **Install** it on this repository only.
+4. **App credentials.** From the App's page: copy the **Client ID** into a repository *variable*
+   named **`RECONCILE_APP_CLIENT_ID`** (Settings → Secrets and variables → Actions → Variables —
+   a variable, not a secret; it isn't sensitive). Then **Generate a private key**, and paste the
+   whole downloaded `.pem` file, including the BEGIN/END lines, into a repository *secret* named
+   **`RECONCILE_APP_PRIVATE_KEY`**.
+   *Simpler alternative:* skip the App and put a fine-grained PAT (same two permissions, this repo
+   only) in a secret named **`RECONCILE_PAT`**. The workflow uses it if no App is configured. It
+   works, but it is a long-lived credential tied to you personally; the App's token lasts an hour.
+5. **Allow auto-merge.** Settings → General → Pull Requests → tick **Allow auto-merge**. Without
+   it the PR still opens, and the run warns instead of failing — you just merge it yourself.
+6. **Make the checks required** (this is what gives the PR its teeth). Settings → Rules → New
+   ruleset, targeting `main`: enable **Require a pull request before merging** with **0 required
+   approvals** — leave it at 0, or the bot's PR waits for a human forever — and **Require status
+   checks to pass**, adding **`Ruby tests`** and **`Jekyll build`**. Leave "Do not allow bypassing"
+   unticked so you can still push directly when you want to.
+7. On the **fork**, GitHub disables scheduled workflows by default — open the Actions tab and enable
    them. (Public repos also auto-disable a schedule after 60 days with no activity; a manual run
    re-arms it.)
+
+Without step 6 the PR flow still works, it just merges as soon as it is mergeable — the plumbing
+is proven but nothing is actually enforced.
 
 ### Running it by hand
 
 Actions → *Reconcile sold state* → **Run workflow**. Tick **dry run** first: it prints what it would
 change and writes nothing. Untick to apply.
+
+### If a reconcile PR is sitting open
+
+- **Checks red** — something the suite guards is broken. Read the failing check; fix the cause on
+  `main`. The next run rebuilds the PR branch from `main`, so a fix on `main` clears it.
+- **Checks green but not merging** — auto-merge probably isn't enabled (step 5), or the ruleset
+  asks for an approval it will never get (step 6). Merge it by hand meanwhile.
+- **It keeps reopening after you close it** — that is correct. The item really is sold at Stripe
+  and `main` still says otherwise; closing the PR doesn't change either. Fix the underlying state.
 
 ### If it refuses to run
 
@@ -153,9 +200,10 @@ Stripe key). It checks the reconciler's behaviour and validates every product fi
 It is wired in as a gate, so you do not have to remember to run it:
 
 - **The site will not deploy if it fails.** `jekyll.yml` builds only after the tests pass.
-- **The reconciler will not run, or commit, if it fails.** It tests before touching a product
-  file and again before committing what it wrote.
-- **Pull requests get the tests plus a full site build** — including the go-live PR upstream.
+- **The reconciler will not run, or raise a PR, if it fails.** It tests before touching a product
+  file and again before pushing what it wrote.
+- **Pull requests get the tests plus a full site build** — the reconciler's own PRs included, and
+  the go-live PR upstream.
 
 What it will catch for you when editing the catalogue by hand:
 

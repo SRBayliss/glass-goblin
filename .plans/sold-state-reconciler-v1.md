@@ -246,11 +246,11 @@ low-priority — implement it only when a repeatable line is actually dual-liste
 The shipped script follows the design above — list active links, match by URL, derive, rewrite only
 on a flip — with these changes, each of which came out of building or testing it:
 
-1. **The commit does not trigger the Pages build by itself.** GitHub deliberately does not fire
-   workflows for pushes made with the built-in `GITHUB_TOKEN`, so `jekyll.yml`'s `on: push` stays
-   silent and the shop would never rebuild. The workflow therefore ends with an explicit
-   `gh workflow run jekyll.yml`, and takes `actions: write` for it. **This was the one defect in the
-   spec that would have made the feature silently useless.**
+1. **The built-in `GITHUB_TOKEN` cannot trigger workflows.** GitHub deliberately does not fire
+   workflows for anything it does, so a push to `main` left `jekyll.yml`'s `on: push` silent and the
+   shop never rebuilt. **This was the one defect in the spec that would have made the feature
+   silently useless.** The first fix was an explicit `gh workflow run jekyll.yml`; superseded by the
+   PR flow below, where the merge is performed by a GitHub App whose token *does* trigger `on: push`.
 2. **Empty-active-set guard.** A key pointed at the wrong Stripe account returns a successful,
    empty list — which the naive derive reads as "everything sold" and commits, with no automatic
    way back. The script refuses when the active set is empty while products still reference links,
@@ -289,6 +289,37 @@ Three places enforce it:
 The reconciler needs its own gate rather than relying on the deploy one: it runs whatever is on
 `main` every 15 minutes, including a change pushed straight there, which the deploy gate would
 block from *shipping* but could not stop from *running*.
+
+### The reconciler raises a PR rather than pushing (2026-08-08, superseding the direct push)
+
+The gaps in the direct-push design were that the bot's own commits reached `main` without facing
+any of the checks a human's would, and that its output was only ever validated by the reconciler
+itself. It now commits to a bot-owned branch, opens (or updates) a PR, and enables auto-merge, so
+`ci.yml` gates its writes exactly as it gates ours.
+
+What makes this work, and what it costs:
+
+- **It needs a GitHub App.** `GITHUB_TOKEN` cannot trigger workflows, so a PR it opened would sit
+  with checks pending forever and never merge — the same rule that broke the original build
+  trigger, in a new place. `actions/create-github-app-token@v3` mints a one-hour installation
+  token (Contents + Pull requests, read/write); a fine-grained PAT in `RECONCILE_PAT` is the
+  fallback. **This is the real price of the design: a credential to create and hold.**
+- **The explicit Pages dispatch is gone.** An App/PAT merge is a genuine push by a real identity,
+  so `jekyll.yml`'s `on: push` fires by itself.
+- **Fixed branch `reconcile/sold-state`, force-pushed, rebuilt from `main` each run.** Repeat sales
+  update the one PR instead of spawning a queue of them, and a stale branch can never accumulate.
+- **Failure modes are deliberately asymmetric.** No App/PAT while an item has sold → hard error
+  (an actionable problem). Auto-merge unavailable → warning only, PR left open; the alternative is
+  96 failure emails a day for a setting the operator can fix at leisure.
+- **Required approvals must be 0** on the ruleset, or the bot's PR waits on a human that will
+  never come — which defeats the automation while looking like it is working.
+- **Self-healing.** The reconciler re-derives from Stripe every run, so closing its PR, or a
+  transient failure, changes nothing: the next run reopens the same state.
+
+Verified locally as far as it can be without GitHub: workflow YAML parses, every `run:` block
+passes `bash -n`, and the PR step was executed against a stubbed `gh` and a local bare remote
+across four paths — no PR open (creates one), PR already open (reuses it, no duplicate), auto-merge
+refused (warns, exit 0), and no token while changes exist (errors, exit 1).
 
 Each test was checked against a deliberate mutation (never-resurrect guard removed, empty-active
 guard removed, URL normalisation dropped, catalogue field corrupted, secret-shaped string committed)
