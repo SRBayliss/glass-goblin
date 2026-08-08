@@ -183,8 +183,13 @@ composite cards with price/stock text baked in.
 - **Sold-state reconciler + webhooks** — keep `status:` in sync with the providers automatically.
   Full spec: `.plans/sold-state-reconciler-v1.md` (4a = scheduled Action polling Stripe's `active`
   flag; 4b = optional webhook trigger for low latency). Non-safety-critical: money-safety is already
-  provider-side, so this only improves label freshness. `gg-0002`'s already-deactivated demo link is
-  a ready-made acceptance test.
+  provider-side, so this only improves label freshness.
+  - **4a built 2026-08-08** (ahead of Phase 2/3, since it needed no operator setup to write):
+    `scripts/reconcile_sold.rb` + `.github/workflows/reconcile-sold.yml`, runbook section added.
+    Blocked on the operator creating a restricted Stripe key and adding it as the
+    `STRIPE_SECRET_KEY` Actions secret; `gg-0002`'s already-deactivated demo link is then the
+    acceptance test (dry run first). See the spec's "As built" section.
+  - 4b (webhook trigger) not started — only worth it if ~15-minute staleness proves annoying.
 - Bulk-listing **script**: reads a source (CSV/inline) and, per item, creates a Stripe product +
   Payment Link via the Stripe API, then writes the `_products/<sku>.md` file. The v1 file shape
   above is designed so this is a clean add.

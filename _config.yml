@@ -17,3 +17,7 @@ defaults:
       type: products
     values:
       layout: product
+
+# Operator tooling, not site content — Jekyll would otherwise copy it into _site verbatim.
+exclude:
+  - scripts/

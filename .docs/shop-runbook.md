@@ -93,6 +93,58 @@ shared URLs outlive your edit — a still-live link could take money for a sold 
 For repeatable lines selling down (not gone): decrement `quantity` and re-cap the Stripe link
 (H3 above); only set `status: sold` at zero.
 
+Step 2 now also happens on its own for Stripe items — see the reconciler below. Step 1 is still
+yours, and it is the one that matters.
+
+## Automatic sold-state reconciler (Phase 4a)
+
+`scripts/reconcile_sold.rb`, run by `.github/workflows/reconcile-sold.yml` roughly every 15 minutes,
+keeps `status:` in step with Stripe **so you don't have to remember step 2 above**. It asks Stripe
+which payment links are still active; any product whose `stripe_url` has dropped off that list has
+sold out, so it rewrites the file to `status: sold`, `quantity: 0`, commits, and triggers a rebuild.
+
+**It is a label-freshness tool, not a money guard.** A second buyer is already blocked at Stripe by
+the link's 1-use cap, whatever a cached page still says. Worst case here is a stale "available"
+badge for one cron interval.
+
+What it covers, and what it does not:
+
+| Case | Automatic? |
+|------|:---:|
+| Stripe one-off sold | ✅ |
+| Stripe repeatable fully sold out (uses cap hit) | ✅ |
+| Stripe repeatable **partial** stock change | ❌ — `active` only flips at full sell-out; decrement `quantity` by hand |
+| PayPal (any) | ❌ — no inventory read; mark it sold by hand |
+| Item with no `stripe_url` | ❌ — ignored entirely |
+
+It **never** flips an item back to available. Re-listing is deliberate: new link, restock, re-cap.
+**Manual `status: sold` edits remain the fallback** and are still required for the ❌ rows.
+
+### One-time setup
+
+Until step 2 is done the workflow runs but does nothing — it logs "STRIPE_SECRET_KEY is not set —
+skipping" and passes, rather than mailing you a failure every 15 minutes.
+
+1. Stripe dashboard → **restricted key**, permission **Payment links: read** only (it never writes).
+2. Repo → Settings → Secrets and variables → Actions → new secret **`STRIPE_SECRET_KEY`**.
+3. Repo → Settings → Actions → General → Workflow permissions → **Read and write**. Without this the
+   run cannot commit, whatever the workflow file asks for.
+4. On the **fork**, GitHub disables scheduled workflows by default — open the Actions tab and enable
+   them. (Public repos also auto-disable a schedule after 60 days with no activity; a manual run
+   re-arms it.)
+
+### Running it by hand
+
+Actions → *Reconcile sold state* → **Run workflow**. Tick **dry run** first: it prints what it would
+change and writes nothing. Untick to apply.
+
+### If it refuses to run
+
+`Refusing to reconcile: Stripe reports zero active payment links…` means Stripe returned an empty
+list while products still point at links. That is what a wrong-account or de-permissioned key looks
+like, and acting on it would mark the whole shop sold with no automatic way back. Check the key
+first. If the shop genuinely has sold out, re-run with the **allow empty active** box ticked.
+
 ## Test before trusting (Phase 2 "done when")
 
 For **each** item (not just one per provider): do a real test purchase and confirm the hosted

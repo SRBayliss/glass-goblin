@@ -199,6 +199,11 @@ _(none blocking — requirements gathering complete)_
 - 2026-07-11 — A catalogue hub for cross-posting (Shopify Basic + Marketplace Connect, or a
   dedicated multichannel lister) deferred to phase 2, to revisit when safely cross-listing the
   unique stock across eBay/Etsy becomes the goal.
+- 2026-08-08 — Phase 4a (sold-state reconciler) built: a scheduled Action reads Stripe's active
+  payment links and rewrites `status:` for anything that has sold. Brought forward ahead of the
+  remaining Phase 2/3 work because it was the only piece buildable without operator account setup.
+  It refreshes the label only — oversell protection stays provider-side. Spec + as-built notes:
+  `.plans/sold-state-reconciler-v1.md`.
 - 2026-07-11 — v1 signed off: Stripe primary + PayPal alternative + Monzo bank-transfer invoice
   CTA on **every** available item (no high-value gating); catalogue is a Jekyll `_products`
   collection we control; bulk listing via our own script (phase 4); runbook lives in `.docs/`

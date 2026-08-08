@@ -1,0 +1,81 @@
+# Keeps each product's `status:` in step with Stripe.
+#
+# Stripe deactivates a payment link once it hits its completed-sessions cap, so a link
+# dropping out of the active list means the item has sold. The script derives that and
+# rewrites the front matter; this workflow commits the result and asks Pages to rebuild.
+#
+# Spec: .plans/sold-state-reconciler-v1.md (Phase 4a)
+# Money-safety does not depend on this: a second buyer is blocked at Stripe regardless of
+# what a cached page still says. This only keeps the label fresh.
+
+name: Reconcile sold state
+
+on:
+  schedule:
+    # ~every 15 minutes. GitHub's floor is 5, and scheduled runs are often delayed under
+    # load, so treat the interval as a ceiling on staleness rather than a promise.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report what would change without writing'
+        type: boolean
+        default: false
+      allow_empty_active:
+        description: 'Proceed even if Stripe reports zero active links (real full sell-out)'
+        type: boolean
+        default: false
+  repository_dispatch:
+    # Fired by the Phase 4b webhook receiver, if that ever gets built.
+    types: [reconcile]
+
+concurrency:
+  group: reconcile-sold
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit the status change
+  actions: write  # dispatch the Pages build (see the deploy step)
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false # stdlib only — no gems needed
+
+      - name: Reconcile against Stripe
+        run: ruby scripts/reconcile_sold.rb
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          ALLOW_EMPTY_ACTIVE: ${{ inputs.allow_empty_active && '1' || '0' }}
+
+      - name: Commit and push any changes
+        id: commit
+        run: |
+          if git diff --quiet -- _products; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name  "reconcile-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _products
+          git commit -m "chore(shop): reconcile sold state from Stripe"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with the built-in GITHUB_TOKEN does not trigger other workflows, so
+      # jekyll.yml's `on: push` will not fire for the commit above. Ask for the build.
+      - name: Trigger the Pages build
+        if: steps.commit.outputs.changed == 'true'
+        run: gh workflow run jekyll.yml --ref "${GITHUB_REF_NAME}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

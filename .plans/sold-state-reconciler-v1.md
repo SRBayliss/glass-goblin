@@ -1,8 +1,13 @@
 # Sold-state reconciler & webhooks — specification v1
 
 > Drafted by Claude (Opus 4.8). Sits under Phase 4 of `.plans/ecommerce-integration-v1.md`
-> (this is the detailed spec for what that plan calls Phase 4a + 4b). Not yet implemented.
+> (this is the detailed spec for what that plan calls Phase 4a + 4b).
 > Created: 2026-08-02.
+>
+> **Status: Phase 4a built 2026-08-08** (Claude, Opus 5) — `scripts/reconcile_sold.rb` +
+> `.github/workflows/reconcile-sold.yml`. Awaiting the operator's one-time setup (restricted
+> Stripe key → `STRIPE_SECRET_KEY` secret) before its first real run. Phase 4b not started.
+> Where the build departs from the sketch below, see **"As built"** at the end.
 
 ## Purpose
 
@@ -235,6 +240,39 @@ official inventory read to reconcile against). Because one-offs are Stripe-only,
 low-priority — implement it only when a repeatable line is actually dual-listed and the lag matters.
 
 ---
+
+## As built (Phase 4a, 2026-08-08)
+
+The shipped script follows the design above — list active links, match by URL, derive, rewrite only
+on a flip — with these changes, each of which came out of building or testing it:
+
+1. **The commit does not trigger the Pages build by itself.** GitHub deliberately does not fire
+   workflows for pushes made with the built-in `GITHUB_TOKEN`, so `jekyll.yml`'s `on: push` stays
+   silent and the shop would never rebuild. The workflow therefore ends with an explicit
+   `gh workflow run jekyll.yml`, and takes `actions: write` for it. **This was the one defect in the
+   spec that would have made the feature silently useless.**
+2. **Empty-active-set guard.** A key pointed at the wrong Stripe account returns a successful,
+   empty list — which the naive derive reads as "everything sold" and commits, with no automatic
+   way back. The script refuses when the active set is empty while products still reference links,
+   unless `ALLOW_EMPTY_ACTIVE=1` (a checkbox on manual runs, for a real full sell-out).
+3. **URL normalisation** before comparison: scheme+host+path, lowercased, query/fragment and any
+   trailing slash dropped — so a `stripe_url` carrying a prefill parameter still matches.
+4. **Front-matter rewrite preserves inline comments and their column**, and only matches keys at
+   column 0, so nested `details:`/`images:` entries can never be hit. Verified against the real
+   product files.
+5. **Never resurrects.** Explicit: a re-activated link does not flip a `sold` item back to
+   available. Re-listing stays a human act.
+6. **`exclude: [scripts/]`** added to `_config.yml` — Jekyll would otherwise copy the script into
+   `_site` and publish it.
+7. **Missing key is a no-op, not a failure.** The cron lands on `main` before the operator has
+   created the Stripe key; failing every 15 minutes would mail them round the clock. Unset
+   `STRIPE_SECRET_KEY` → log and exit 0. A *bad* key still fails loudly (verified: 401).
+8. Entry point guarded by `if __FILE__ == $PROGRAM_NAME` so the helpers can be exercised in
+   isolation. Tested that way against copies of the real `_products` files with Stripe stubbed:
+   26 checks covering the `gg-0002` acceptance case, idempotence, the guard, and the no-op paths.
+
+Untested until the operator supplies a key: the live Stripe call and pagination, the commit/push,
+and the build trigger.
 
 ## Rollout
 
