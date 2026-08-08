@@ -21,3 +21,4 @@ defaults:
 # Operator tooling, not site content — Jekyll would otherwise copy it into _site verbatim.
 exclude:
   - scripts/
+  - test/

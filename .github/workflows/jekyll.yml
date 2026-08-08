@@ -27,8 +27,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Test job — the gate. Nothing below runs unless the suite passes, so a regression in
+  # the reconciler or a malformed product file cannot reach the live site.
+  test:
+    uses: ./.github/workflows/ci.yml
+
   # Build job
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -4,6 +4,7 @@
 # Reconcile each product's sold state against Stripe.
 #
 # Spec: .plans/sold-state-reconciler-v1.md (Phase 4a)
+# Tests: test/test_reconcile_sold.rb — run them before changing anything here.
 #
 # What it does
 #   1. Asks Stripe for every payment link that is currently active.
@@ -34,19 +35,16 @@ require 'set'
 require 'uri'
 require 'yaml'
 
-PRODUCTS_GLOB = File.join(__dir__, '..', '_products', '*.md')
+DEFAULT_PRODUCTS_GLOB = File.expand_path('../_products/*.md', __dir__)
 STRIPE_API = 'https://api.stripe.com/v1/'
 PAGE_SIZE = 100
-
-DRY_RUN = ENV['DRY_RUN'] == '1'
-ALLOW_EMPTY_ACTIVE = ENV['ALLOW_EMPTY_ACTIVE'] == '1'
 
 class ReconcileError < StandardError; end
 
 # --- Stripe ------------------------------------------------------------------
 
 # Nil when unconfigured. A scheduled run every 15 minutes should not mail the operator a
-# failure until they have got round to creating the key; see run().
+# failure until they have got round to creating the key; see reconcile().
 def stripe_key
   key = ENV['STRIPE_SECRET_KEY'].to_s.strip
   key.empty? ? nil : key
@@ -110,7 +108,8 @@ end
 
 FRONT_MATTER = /\A(---[ \t]*\r?\n)(.*?\r?\n)(---[ \t]*\r?\n)/m
 
-Product = Struct.new(:path, :raw, :front_matter, :fields, :prefix, :suffix)
+# opener/closer are kept verbatim so a file's line endings survive a rewrite untouched.
+Product = Struct.new(:path, :fields, :opener, :front_matter, :closer, :body)
 
 def load_product(path)
   raw = File.read(path)
@@ -118,14 +117,17 @@ def load_product(path)
   raise ReconcileError, "#{File.basename(path)} has no front matter" if match.nil?
 
   fields = YAML.safe_load(match[2], permitted_classes: [Date, Time], aliases: false) || {}
-  Product.new(path, raw, match[2], fields, match[1], raw[match.end(0)..] || '')
+  Product.new(path, fields, match[1], match[2], match[3], raw[match.end(0)..] || '')
 end
 
 # Rewrite a top-level scalar field in the front matter, keeping any trailing comment.
 # Only column-0 keys match, so nested list entries (details:, images:) are untouched.
 def set_field(front_matter, key, value)
   pattern = /^(#{Regexp.escape(key)}:)([^\n#]*)(#[^\n]*)?$/
-  return "#{front_matter}#{key}: #{value}\n" unless front_matter.match?(pattern)
+  unless front_matter.match?(pattern)
+    newline = front_matter.include?("\r\n") ? "\r\n" : "\n"
+    return "#{front_matter}#{key}: #{value}#{newline}"
+  end
 
   front_matter.sub(pattern) do
     comment = Regexp.last_match(3)
@@ -139,7 +141,7 @@ end
 def mark_sold(product)
   updated = set_field(product.front_matter, 'status', 'sold')
   updated = set_field(updated, 'quantity', 0)
-  File.write(product.path, "#{product.prefix}#{updated}---\n#{product.suffix}")
+  File.write(product.path, "#{product.opener}#{updated}#{product.closer}#{product.body}")
 end
 
 # --- Reconcile ---------------------------------------------------------------
@@ -150,17 +152,24 @@ def report(lines)
   File.write(summary, "#{lines.join("\n")}\n", mode: 'a') if summary && !summary.empty?
 end
 
-def run
-  key = stripe_key
-  if key.nil?
-    report(['STRIPE_SECRET_KEY is not set — skipping. Add the restricted key as an Actions ' \
-            'secret to switch the reconciler on (see .docs/shop-runbook.md).'])
-    return 0
+# Dependencies are injectable so the tests can drive this without a network or the real
+# catalogue; the defaults are what the workflow actually runs with.
+def reconcile(glob: DEFAULT_PRODUCTS_GLOB,
+              key: stripe_key,
+              active: nil,
+              dry_run: ENV['DRY_RUN'] == '1',
+              allow_empty_active: ENV['ALLOW_EMPTY_ACTIVE'] == '1')
+  if active.nil?
+    if key.nil?
+      report(['STRIPE_SECRET_KEY is not set — skipping. Add the restricted key as an Actions ' \
+              'secret to switch the reconciler on (see .docs/shop-runbook.md).'])
+      return 0
+    end
+
+    active = active_payment_link_urls(key)
   end
 
-  active = active_payment_link_urls(key)
-
-  products = Dir[PRODUCTS_GLOB].sort.map { |path| load_product(path) }
+  products = Dir[glob].sort.map { |path| load_product(path) }
   tracked = products.select { |product| normalise_url(product.fields['stripe_url']) }
 
   if tracked.empty?
@@ -171,7 +180,7 @@ def run
   # A key pointed at the wrong account, or one whose permissions were revoked, can return
   # an empty-but-successful list. Deriving from that would mark the whole shop sold, and
   # nothing here can undo it automatically. Refuse, and let a human confirm.
-  if active.empty? && !ALLOW_EMPTY_ACTIVE
+  if active.empty? && !allow_empty_active
     report([
              'Refusing to reconcile: Stripe reports zero active payment links while ' \
              "#{tracked.length} product(s) still reference one.",
@@ -190,18 +199,16 @@ def run
   end
 
   skus = sold.map { |product| product.fields['sku'] || File.basename(product.path, '.md') }
-  sold.each { |product| mark_sold(product) } unless DRY_RUN
+  sold.each { |product| mark_sold(product) } unless dry_run
 
-  report([
-           DRY_RUN ? "Would mark sold: #{skus.join(', ')} (DRY_RUN)" : "Marked sold: #{skus.join(', ')}"
-         ])
+  report([dry_run ? "Would mark sold: #{skus.join(', ')} (DRY_RUN)" : "Marked sold: #{skus.join(', ')}"])
   0
 end
 
-# Guarded so the helpers above can be required and exercised on their own.
+# Guarded so the tests can load the helpers above without running a reconcile.
 if __FILE__ == $PROGRAM_NAME
   begin
-    exit run
+    exit reconcile
   rescue ReconcileError => e
     warn "reconcile_sold: #{e.message}"
     exit 1

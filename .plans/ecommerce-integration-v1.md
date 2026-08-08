@@ -242,9 +242,22 @@ Read captions from the post; per-bead detail is baked into the composite images.
 
 ## Verification approach
 
-Repo has no test suite/linter by design (personal static site). Verify each phase with
-`bundle exec jekyll build` / `serve` plus a visual check of the shop grid, a product page, the
-sold state, and the invoice CTA. Optional: add HTML link-checking later if desired.
+**Automated (added 2026-08-08, once the reconciler made unattended writes possible).**
+`ruby test/all.rb` — 32 minitest cases, stdlib only, no gems, no network:
+
+- `test/test_reconcile_sold.rb` — the reconciler's behaviour, with Stripe injected.
+- `test/test_catalogue.rb` — every committed product parses and is internally consistent
+  (sku matches filename, images exist, prices positive, sold ⇒ no stock, payment links are
+  https and on the provider's host), the one-off Stripe-only policy holds, and no provider
+  secret is committed (L2).
+
+The suite **gates deployment**: `jekyll.yml` will not build or deploy unless
+`.github/workflows/ci.yml` passes, and the reconciler runs it both before it is allowed to
+touch a product file and again before it commits the result.
+
+**Manual, still required for anything visual.** `bundle exec jekyll build` / `serve` plus a
+look at the shop grid, a product page, the sold state, and the invoice CTA. The tests say
+nothing about how the page looks.
 
 ## Open items before implementing
 

@@ -1,0 +1,59 @@
+# The regression gate. Nothing reaches the live site without this passing.
+#
+# It runs in three situations:
+#   - on a pull request (including the go-live PR to the upstream repo);
+#   - as a called workflow from jekyll.yml, which deploys only if it succeeds;
+#   - on demand.
+#
+# It is not triggered by `push` on purpose: on main, jekyll.yml calls it, so a push
+# trigger here would only duplicate that run.
+
+name: Tests
+
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Ruby tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        # https://github.com/ruby/setup-ruby/releases/tag/v1.207.0
+        uses: ruby/setup-ruby@4a9ddd6f338a97768b8006bf671dfbad383215f4
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false # the suite is stdlib only — no gems, no bundler
+
+      - name: Run the suite
+        run: ruby test/all.rb
+
+  build:
+    # On main, jekyll.yml builds the site itself as part of deploying, so building here
+    # too would just be a slower duplicate. On a pull request nothing else builds it, and
+    # a broken layout or Liquid tag should not survive review.
+    name: Jekyll build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@4a9ddd6f338a97768b8006bf671dfbad383215f4
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Build with Jekyll
+        run: bundle exec jekyll build
+        env:
+          JEKYLL_ENV: production

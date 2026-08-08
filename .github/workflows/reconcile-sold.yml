@@ -45,10 +45,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        # https://github.com/ruby/setup-ruby/releases/tag/v1.207.0
+        uses: ruby/setup-ruby@4a9ddd6f338a97768b8006bf671dfbad383215f4
         with:
           ruby-version: '3.2'
           bundler-cache: false # stdlib only — no gems needed
+
+      # This job rewrites the catalogue and commits it without anyone watching, and it
+      # runs whatever is on main — including a change pushed straight there, which the
+      # deploy gate would block from shipping but could not stop from running here.
+      # A red suite must not be allowed to touch a product file.
+      - name: Run the test suite first
+        run: ruby test/all.rb
 
       - name: Reconcile against Stripe
         run: ruby scripts/reconcile_sold.rb
@@ -56,6 +64,11 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           ALLOW_EMPTY_ACTIVE: ${{ inputs.allow_empty_active && '1' || '0' }}
+
+      # The step above just rewrote product files unattended. Re-validating before the
+      # commit means a bad rewrite fails the run instead of landing on main.
+      - name: Re-check the catalogue before committing
+        run: ruby test/all.rb
 
       - name: Commit and push any changes
         id: commit

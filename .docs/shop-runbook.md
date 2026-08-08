@@ -145,6 +145,35 @@ list while products still point at links. That is what a wrong-account or de-per
 like, and acting on it would mark the whole shop sold with no automatic way back. Check the key
 first. If the shop genuinely has sold out, re-run with the **allow empty active** box ticked.
 
+## The test suite and what it blocks
+
+Run it any time with **`ruby test/all.rb`** (a second or two; needs no gems, no network, no
+Stripe key). It checks the reconciler's behaviour and validates every product file.
+
+It is wired in as a gate, so you do not have to remember to run it:
+
+- **The site will not deploy if it fails.** `jekyll.yml` builds only after the tests pass.
+- **The reconciler will not run, or commit, if it fails.** It tests before touching a product
+  file and again before committing what it wrote.
+- **Pull requests get the tests plus a full site build** — including the go-live PR upstream.
+
+What it will catch for you when editing the catalogue by hand:
+
+- a product missing `sku`/`title`/`price`/`status`/`quantity`, or one whose `sku` no longer
+  matches its filename;
+- an image referenced in front matter that isn't in `assets/products/`;
+- a price that isn't a number, a negative stock count, or an item marked sold that still
+  claims stock;
+- a payment link that isn't https or isn't on `buy.stripe.com` / `www.paypal.com`;
+- **a one-off given a PayPal link** — the cross-provider oversell risk the provider policy
+  above exists to prevent (`gg-0001` is listed in the test as the known demo exception; when
+  you switch it to Stripe-only at go-live, remove it from that list);
+- **a Stripe secret key committed anywhere in the repo.** If this one fails, rotate the key at
+  Stripe first, then remove it — a key that has been pushed should be treated as burnt.
+
+If a failure looks wrong rather than real, the message names the file and the field. Fix the
+data; don't loosen the test to make it pass.
+
 ## Test before trusting (Phase 2 "done when")
 
 For **each** item (not just one per provider): do a real test purchase and confirm the hosted

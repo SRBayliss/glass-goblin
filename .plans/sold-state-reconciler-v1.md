@@ -267,9 +267,33 @@ on a flip — with these changes, each of which came out of building or testing 
 7. **Missing key is a no-op, not a failure.** The cron lands on `main` before the operator has
    created the Stripe key; failing every 15 minutes would mail them round the clock. Unset
    `STRIPE_SECRET_KEY` → log and exit 0. A *bad* key still fails loudly (verified: 401).
-8. Entry point guarded by `if __FILE__ == $PROGRAM_NAME` so the helpers can be exercised in
-   isolation. Tested that way against copies of the real `_products` files with Stripe stubbed:
-   26 checks covering the `gg-0002` acceptance case, idempotence, the guard, and the no-op paths.
+8. Entry point guarded by `if __FILE__ == $PROGRAM_NAME`, and `reconcile()` takes its glob,
+   key, active-set and flags by injection — so the tests drive it without a network or the
+   real catalogue, and without patching constants. (`run` was the original name; it collides
+   with `Minitest::Test#run`.)
+
+### Tests and the CD gate (added same day)
+
+The reconciler writes to the repo unattended, so it should not be able to ship a regression.
+`ruby test/all.rb` — 32 cases, stdlib minitest, no gems, no network — covers the reconciler's
+behaviour and validates the committed catalogue (see the main plan's "Verification approach").
+
+Three places enforce it:
+
+| Where | What it stops |
+|-------|---------------|
+| `ci.yml` called by `jekyll.yml` (`build` needs `test`) | a regression reaching the live site |
+| `ci.yml` on `pull_request` | a broken catalogue or site build surviving the go-live PR |
+| Test steps inside `reconcile-sold.yml`, before **and** after the rewrite | a red suite touching a product file; a bad rewrite being committed |
+
+The reconciler needs its own gate rather than relying on the deploy one: it runs whatever is on
+`main` every 15 minutes, including a change pushed straight there, which the deploy gate would
+block from *shipping* but could not stop from *running*.
+
+Each test was checked against a deliberate mutation (never-resurrect guard removed, empty-active
+guard removed, URL normalisation dropped, catalogue field corrupted, secret-shaped string committed)
+to confirm it actually goes red. The first attempt at the never-resurrect test did **not** — it
+asserted a case the guard was not responsible for; it was rewritten until the mutation failed it.
 
 Untested until the operator supplies a key: the live Stripe call and pagination, the commit/push,
 and the build trigger.
