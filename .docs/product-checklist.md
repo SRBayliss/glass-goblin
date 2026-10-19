@@ -2,6 +2,10 @@
 
 > Drafted by Claude (Opus 4.8). Copy the template block for each product you wire up.
 > Full detail and the "why" behind each step are in `shop-runbook.md`.
+>
+> This is the **by-hand** checklist. For a batch, `scripts/bulk_list.rb` does the file and the
+> Stripe steps in one go and sets the caps for you — see "Bulk-list a batch of items" in the
+> runbook. The photo, PayPal, invoice and test-purchase steps below still apply either way.
 
 ## Template — copy per item
 

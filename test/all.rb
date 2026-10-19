@@ -7,3 +7,4 @@
 
 require_relative 'test_reconcile_sold'
 require_relative 'test_catalogue'
+require_relative 'test_bulk_list'

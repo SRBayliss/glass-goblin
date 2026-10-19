@@ -1,7 +1,11 @@
 # E-commerce integration — v1 implementation plan
 
 Status: **Phases 0–1 complete** (2026-07-20), deployed to the test fork, runbook scaffolded.
-**Phase 2 (payment wiring) is next** — start there.
+Two Phase-4 items were then built early because they needed no operator setup: the **sold-state
+reconciler** (2026-08-08) and the **bulk-listing script** (2026-10-20).
+**Phase 2 (payment wiring) is still next** — and everything now waits on the same thing: Stripe
+credentials. The reconciler needs a read-only key as an Actions secret; the bulk lister needs a
+write-scoped key locally. Neither can be proven until those exist.
 Created: 2026-07-11
 Supporting investigation: `.investigations/ecommerce-integration.md`
 Security review (payment manipulation): folded into the phases below; findings tagged inline
@@ -190,9 +194,12 @@ composite cards with price/stock text baked in.
     `STRIPE_SECRET_KEY` Actions secret; `gg-0002`'s already-deactivated demo link is then the
     acceptance test (dry run first). See the spec's "As built" section.
   - 4b (webhook trigger) not started — only worth it if ~15-minute staleness proves annoying.
-- Bulk-listing **script**: reads a source (CSV/inline) and, per item, creates a Stripe product +
-  Payment Link via the Stripe API, then writes the `_products/<sku>.md` file. The v1 file shape
-  above is designed so this is a clean add.
+- Bulk-listing **script** — **built 2026-10-20** (like 4a, ahead of its turn, because it needed no
+  operator setup to write). `scripts/bulk_list.rb` + `scripts/products.example.csv`, runbook section
+  added. Reads a CSV and, per row, creates the Stripe Product + Price + Payment Link and writes
+  `_products/<sku>.md`. The v1 file shape did prove a clean fit — nothing about the data model
+  needed changing. Blocked only on the operator creating a **write-scoped** Stripe key; the script
+  previews fully without one. See the "As built" notes below.
 - **Cross-posting hub** (Shopify Basic + Marketplace Connect, or a multichannel lister) — see the
   investigation's phase-2 analysis; revisit when safely cross-listing unique stock is the goal.
 
@@ -243,9 +250,12 @@ Read captions from the post; per-bead detail is baked into the composite images.
 ## Verification approach
 
 **Automated (added 2026-08-08, once the reconciler made unattended writes possible).**
-`ruby test/all.rb` — 32 minitest cases, stdlib only, no gems, no network:
+`ruby test/all.rb` — 78 minitest cases, stdlib only, no gems, no network:
 
 - `test/test_reconcile_sold.rb` — the reconciler's behaviour, with Stripe injected.
+- `test/test_bulk_list.rb` — the bulk lister's behaviour, with Stripe injected: the batch it
+  refuses, the caps it sets, and the fact that the files it generates satisfy the catalogue rules
+  below rather than merely parsing.
 - `test/test_catalogue.rb` — every committed product parses and is internally consistent
   (sku matches filename, images exist, prices positive, sold ⇒ no stock, payment links are
   https and on the provider's host), the one-off Stripe-only policy holds, and no provider
@@ -258,6 +268,49 @@ touch a product file and again before it commits the result.
 **Manual, still required for anything visual.** `bundle exec jekyll build` / `serve` plus a
 look at the shop grid, a product page, the sold state, and the invoice CTA. The tests say
 nothing about how the page looks.
+
+---
+
+## As built — bulk-listing script (2026-10-20)
+
+`scripts/bulk_list.rb`. CSV in, Stripe objects and `_products/*.md` out. The decisions worth
+recording, because most of them are departures from how the reconciler behaves:
+
+1. **Preview is the default; `--apply` is opt-in.** The opposite of the reconciler, deliberately.
+   Every write the reconciler makes is undone by a human editing a file. This one creates objects
+   in a live Stripe account, so the default had to be the harmless one.
+2. **The whole batch is validated before anything is created.** A run that fails on row 8 of 12
+   leaves live payment links with no page pointing at them — the expensive mess. Every bad row is
+   reported at once, with its spreadsheet line number, and nothing reaches Stripe.
+3. **The Stripe product id is the sku.** This is what makes a repeat run safe without storing any
+   state: a second attempt at the same item collides at Stripe instead of silently creating a
+   duplicate listing. Idempotency keys cover a retry inside the 24-hour window; the deterministic
+   id covers forever.
+4. **It never overwrites an existing `_products/<sku>.md`.** Descriptions and photo lists are
+   hand-written; clobbering them to re-paste a URL is not a trade worth making.
+5. **The one-off provider policy is enforced in code**, not just documented — a row with
+   `quantity: 1` and a `paypal_url` is refused. The policy's whole value is that the race is
+   structurally impossible, which a convention nobody checks does not deliver.
+6. **Prices convert through `Rational`, not `Float`.** `(4.35 * 100).to_i` is 434. That is a real
+   mispriced listing, and it only shows up on the prices unlucky enough to land badly in binary.
+7. **A separate `STRIPE_WRITE_KEY`**, not the reconciler's `STRIPE_SECRET_KEY`. Sharing the
+   variable name would invite widening the unattended cron's read-only key to write scope — the
+   one credential in this system that should never be able to create anything.
+8. **Photos are discovered on disk, not declared in the CSV.** The catalogue test fails the build
+   if a product references an image that is not in the repo, so the generator can only reference
+   what it can see. No photos at all is a warning, not an error: the templates skip the gallery.
+9. It does **not** commit. The reconciler commits because nobody is watching it; here the operator
+   reviews the diff.
+
+**Verified** with 46 tests (stubbed Stripe, no network), each checked against a deliberate
+mutation — guard removed, cap changed, currency switched, quoting dropped — to confirm it actually
+goes red. Two mutations in the first pass were not caught by the tests I thought covered them: one
+never matched the source, and one hit the first of two identical `return 1` lines, so it tested the
+wrong branch. Both were re-run against the exact text before the suite was trusted. One generated
+file was also put through a real `jekyll build` to confirm the page renders — gallery, details,
+buy button and shop card — since the tests check fields, not rendering.
+
+**Untested until a write key exists:** the live Stripe calls and their response shapes.
 
 ## Open items before implementing
 

@@ -34,6 +34,60 @@
 4. Preview with `bundle exec jekyll serve`; check the product page and the shop card/filters.
 5. Commit + push.
 
+## Bulk-list a batch of items
+
+For more than two or three items at once, `scripts/bulk_list.rb` does steps 2 and 3 for you: it
+creates the Stripe Product, Price and Payment Link per row — with the caps from the policy below
+already set — and writes `_products/<sku>.md`. One command instead of a round of dashboard clicking
+per item.
+
+**One-time setup.** Create a Stripe key with **write** access to Products, Prices and Payment Links.
+This is *not* the reconciler's key: that one is read-only and lives in an Actions secret. This one
+stays on your machine and is never committed or added to GitHub.
+
+```sh
+export STRIPE_WRITE_KEY=...            # PowerShell: $env:STRIPE_WRITE_KEY = "..."
+```
+
+**Each batch.**
+
+1. Copy `scripts/products.example.csv` and fill in a row per item. Required columns: `sku`, `title`,
+   `price`, `quantity`. Optional: `category`, `tags`, `subtitle`, `condition`, `details`,
+   `description`, `paypal_url`, `shipping_rate`. `tags` and `details` separate entries with `|`;
+   `details` are `Label=Value` pairs.
+2. Put the photos in `assets/products/` as `<sku>-1.jpg`, … **before** running it. The script
+   references the files that exist at the time it runs; it warns about any item with none.
+3. Preview — this is the default, and it writes nothing anywhere:
+   ```sh
+   ruby scripts/bulk_list.rb batch.csv
+   ```
+   Read the caps it reports per item. Fix the CSV and preview again until it is right.
+4. Create them for real:
+   ```sh
+   ruby scripts/bulk_list.rb batch.csv --apply
+   ```
+5. Preview the site (`bundle exec jekyll serve`), then commit and push. The script does not commit —
+   you review the new files first.
+
+**What it will not do, so you are not surprised:**
+
+- **It refuses the whole batch if any row is bad**, before creating anything. A half-listed batch
+  leaves live Stripe links with no page pointing at them, which is the expensive mess to clean up.
+- **It never touches an existing `_products/<sku>.md`.** A sku you already have is reported and the
+  batch stops. Re-pasting a URL is not worth losing a description you wrote by hand.
+- **It never reuses a Stripe product id.** The id *is* the sku, so a second run for the same item
+  collides and stops rather than quietly creating a duplicate listing.
+- **It will not list a one-off with a `paypal_url`** — that is the cross-provider oversell race, so
+  the policy is enforced in code, not just written down here.
+- **It does not create PayPal buttons.** Make those by hand for repeatable lines (below) and either
+  put the URL in the CSV or paste it afterwards.
+- **It does not set postage.** Add a `shipping_rate` column (a Stripe shipping-rate id, `shr_…`) or
+  make sure postage is inside the price — it warns when neither is evident. Never collect it
+  separately afterwards (M3).
+
+**If it stops partway**, the report names exactly what was listed, what failed, and what was never
+attempted. Check Stripe for a product created without a file beside it before you run it again.
+
 ## Stripe Payment Link (per item)
 
 - In the Stripe dashboard: create a **Product + Price** in **GBP** (M2), then a **Payment Link** for it.
