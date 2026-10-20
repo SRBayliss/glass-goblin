@@ -3,6 +3,11 @@
 > Drafted by Claude (Opus 4.8) as a Phase 2 scaffold — review and adjust before relying on it.
 > Lives in a dot-folder (`.docs/`), so Jekyll does **not** publish it. Risk tags (C/H/M/L) map to
 > the security review folded into `.plans/ecommerce-integration-v1.md`.
+>
+> **Starting from scratch with the Stripe credentials in hand? Use
+> [`go-live-test-pass.md`](go-live-test-pass.md) instead** — it puts the steps below in the right
+> order and proves the whole chain end to end. This file is the reference for each individual
+> piece; that one is the order to do them in.
 
 ## How the shop works (read first)
 
@@ -152,7 +157,8 @@ yours, and it is the one that matters.
 
 ## Automatic sold-state reconciler (Phase 4a)
 
-`scripts/reconcile_sold.rb`, run by `.github/workflows/reconcile-sold.yml` roughly every 15 minutes,
+`scripts/reconcile_sold.rb`, run by `.github/workflows/reconcile-sold.yml` on a cron (asked for
+every 15 minutes; in practice every few hours — see the note under the webhook section),
 keeps `status:` in step with Stripe **so you don't have to remember step 2 above**. It asks Stripe
 which payment links are still active; any product whose `stripe_url` has dropped off that list has
 sold out, so it rewrites the file to `status: sold`, `quantity: 0` and **opens a pull request**.
@@ -163,7 +169,7 @@ checks failed — that is the system working.
 
 **It is a label-freshness tool, not a money guard.** A second buyer is already blocked at Stripe by
 the link's 1-use cap, whatever a cached page still says. Worst case here is a stale "available"
-badge for one cron interval.
+badge until the next run — which on this repo has meant hours, not minutes.
 
 What it covers, and what it does not:
 
@@ -250,15 +256,18 @@ first. If the shop genuinely has sold out, re-run with the **allow empty active*
 
 ## Webhook trigger (Phase 4b) — optional
 
-The reconciler above runs on a 15-minute cron, so a sold item can show as available for up to
-15 minutes. This makes that seconds instead, by having Stripe tell the repo the moment something
-happens: `workers/reconcile-trigger/` is a small Cloudflare Worker that verifies the webhook came
-from Stripe and then fires the same `reconcile` run the cron fires.
+The reconciler above is *asked* to run every 15 minutes, but measured on this repo it actually
+runs every **3 to 7 hours** — GitHub runs scheduled workflows on free public repos when it feels
+like it, and had switched this one off entirely for inactivity. So a sold item can sit there
+looking available for most of a day. This makes that seconds instead, by having Stripe tell the
+repo the moment something happens: `workers/reconcile-trigger/` is a small Cloudflare Worker that
+verifies the webhook came from Stripe and then fires the same `reconcile` run the cron fires.
 
 **You do not need this.** It changes nothing about money-safety — a second buyer is blocked at
 Stripe either way — and if the Worker breaks, is deleted, or never gets deployed, the cron carries
-on catching everything exactly as before. Set it up only if the 15-minute label lag turns out to
-bother you in practice.
+on catching everything exactly as before. Decide with the real numbers in front of you — measure
+the gaps between scheduled runs after the test pass — but given what the history shows, expect to
+want it.
 
 ### What it does and does not do
 

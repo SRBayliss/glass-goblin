@@ -7,6 +7,9 @@ trigger** (4b, both 2026-10-20). Phase 4 is therefore code-complete; deploying 4
 **Phase 2 (payment wiring) is still next** — and everything now waits on the same thing: Stripe
 credentials. The reconciler needs a read-only key as an Actions secret; the bulk lister needs a
 write-scoped key locally. Neither can be proven until those exist.
+**When those credentials arrive, work through `.docs/go-live-test-pass.md`** — an ordered pass
+that takes a CSV row through to an item taking itself off sale, and which supersedes the ad-hoc
+`gg-0002` acceptance test.
 Created: 2026-07-11
 Supporting investigation: `.investigations/ecommerce-integration.md`
 Security review (payment manipulation): folded into the phases below; findings tagged inline

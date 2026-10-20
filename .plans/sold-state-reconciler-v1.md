@@ -188,7 +188,16 @@ The push to `main` triggers the existing `jekyll.yml` build → the shop page up
 | PayPal one-off | n/a | none by policy (gg-0001 is a demo exception) |
 | Oversell (money) | independent | provider self-close, not this system |
 
-**Staleness:** worst case ≈ one cron interval (~15 min; GitHub may delay scheduled runs under load).
+**Staleness:** worst case ≈ one cron interval. The spec assumed ~15 min. **Measured 2026-10-20,
+that assumption is wrong by more than an order of magnitude:** the run history shows the `*/15`
+cron actually firing every **3–7 hours** on this repo, and GitHub had additionally switched the
+workflow off entirely under `disabled_inactivity`. Free public repositories get scheduled
+workflows run on a best-effort basis, and the published floor of 5 minutes is not a commitment.
+
+Two consequences. Plan for a sold item showing as available for **hours**, not minutes — still not
+an oversell risk, since Stripe blocks the second buyer regardless, but a much worse shop window
+than intended. And 4b stops being a latency nicety: if label freshness matters at all, the webhook
+is the only thing that delivers it.
 
 ### Ready-made first test
 
