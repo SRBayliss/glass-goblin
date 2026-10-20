@@ -1,8 +1,9 @@
 # E-commerce integration — v1 implementation plan
 
 Status: **Phases 0–1 complete** (2026-07-20), deployed to the test fork, runbook scaffolded.
-Two Phase-4 items were then built early because they needed no operator setup: the **sold-state
-reconciler** (2026-08-08) and the **bulk-listing script** (2026-10-20).
+All three Phase-4 items were then built early, because none of them needed operator setup to write:
+the **sold-state reconciler** (4a, 2026-08-08), the **bulk-listing script** and the **webhook
+trigger** (4b, both 2026-10-20). Phase 4 is therefore code-complete; deploying 4b stays optional.
 **Phase 2 (payment wiring) is still next** — and everything now waits on the same thing: Stripe
 credentials. The reconciler needs a read-only key as an Actions secret; the bulk lister needs a
 write-scoped key locally. Neither can be proven until those exist.
@@ -193,7 +194,11 @@ composite cards with price/stock text baked in.
     Blocked on the operator creating a restricted Stripe key and adding it as the
     `STRIPE_SECRET_KEY` Actions secret; `gg-0002`'s already-deactivated demo link is then the
     acceptance test (dry run first). See the spec's "As built" section.
-  - 4b (webhook trigger) not started — only worth it if ~15-minute staleness proves annoying.
+  - **4b built 2026-10-20** — `workers/reconcile-trigger/`, a dependency-free Cloudflare Worker
+    that verifies a Stripe webhook signature and fires the same `reconcile` dispatch the cron
+    fires, cutting label lag from ~15 minutes to seconds. **Deploying it remains optional and is
+    still the operator's call**: it changes nothing about money-safety, and the cron catches
+    everything if it is never stood up. Setup in the runbook ("Webhook trigger").
 - Bulk-listing **script** — **built 2026-10-20** (like 4a, ahead of its turn, because it needed no
   operator setup to write). `scripts/bulk_list.rb` + `scripts/products.example.csv`, runbook section
   added. Reads a CSV and, per row, creates the Stripe Product + Price + Payment Link and writes
@@ -261,9 +266,14 @@ Read captions from the post; per-bead detail is baked into the composite images.
   https and on the provider's host), the one-off Stripe-only policy holds, and no provider
   secret is committed (L2).
 
+Plus 24 tests for the webhook receiver (`cd workers/reconcile-trigger && node --test`) — Node's
+built-in runner, nothing to install, `fetch` injected so nothing reaches the network.
+
 The suite **gates deployment**: `jekyll.yml` will not build or deploy unless
 `.github/workflows/ci.yml` passes, and the reconciler runs it both before it is allowed to
-touch a product file and again before it commits the result.
+touch a product file and again before it commits the result. `ci.yml` runs the Ruby suite and
+the receiver's tests as separate jobs — but note the branch ruleset lists required checks by
+name, so **Worker tests** has to be added there by hand to block anything.
 
 **Manual, still required for anything visual.** `bundle exec jekyll build` / `serve` plus a
 look at the shop grid, a product page, the sold state, and the invoice CTA. The tests say

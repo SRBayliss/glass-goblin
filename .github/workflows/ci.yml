@@ -36,6 +36,25 @@ jobs:
       - name: Run the suite
         run: ruby test/all.rb
 
+  worker:
+    # The webhook receiver is the one thing here that is deployed somewhere else, so
+    # nothing else would ever catch a regression in it. Its tests use Node's built-in
+    # runner, so there is nothing to install and no lockfile to keep honest.
+    name: Worker tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # the floor the receiver claims to support
+
+      - name: Run the receiver's tests
+        working-directory: workers/reconcile-trigger
+        run: node --test
+
   build:
     # On main, jekyll.yml builds the site itself as part of deploying, so building here
     # too would just be a slower duplicate. On a pull request nothing else builds it, and

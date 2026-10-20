@@ -246,6 +246,71 @@ list while products still point at links. That is what a wrong-account or de-per
 like, and acting on it would mark the whole shop sold with no automatic way back. Check the key
 first. If the shop genuinely has sold out, re-run with the **allow empty active** box ticked.
 
+## Webhook trigger (Phase 4b) — optional
+
+The reconciler above runs on a 15-minute cron, so a sold item can show as available for up to
+15 minutes. This makes that seconds instead, by having Stripe tell the repo the moment something
+happens: `workers/reconcile-trigger/` is a small Cloudflare Worker that verifies the webhook came
+from Stripe and then fires the same `reconcile` run the cron fires.
+
+**You do not need this.** It changes nothing about money-safety — a second buyer is blocked at
+Stripe either way — and if the Worker breaks, is deleted, or never gets deployed, the cron carries
+on catching everything exactly as before. Set it up only if the 15-minute label lag turns out to
+bother you in practice.
+
+### What it does and does not do
+
+It reads one field of the event: the type. It does **not** work out which item sold, and it does
+not write anything. It says "something changed, go and look", and the reconciler re-derives the
+truth from Stripe as it always does. That is deliberate — it keeps exactly one writer, so the fast
+path and the cron can never disagree with each other.
+
+### One-time setup
+
+1. **A GitHub token for the Worker.** A fine-grained PAT, this repo only, **Contents: Read and
+   write** (that is what `repository_dispatch` needs). Note its expiry — when it lapses the Worker
+   starts returning errors and you fall back to cron speed, which is easy to miss.
+2. **Deploy the Worker.** From `workers/reconcile-trigger/`:
+   ```sh
+   npx wrangler deploy
+   npx wrangler secret put GITHUB_TOKEN           # paste the PAT
+   ```
+   Copy the `https://….workers.dev` URL it prints.
+3. **Add the endpoint in Stripe** (Developers → Webhooks → Add endpoint). Point it at that URL and
+   subscribe to exactly two events:
+   - `checkout.session.completed` — something sold.
+   - `payment_link.updated` — a link hit its cap and switched itself off.
+4. **Give the Worker the signing secret.** Stripe shows a `whsec_…` for the endpoint:
+   ```sh
+   npx wrangler secret put STRIPE_WEBHOOK_SECRET
+   ```
+   Until this is set the Worker rejects everything with a 500, which is the intended behaviour for
+   a receiver that cannot verify what it is being sent.
+5. **Verify.** Use "Send test webhook" in Stripe for `checkout.session.completed`. You should see a
+   `202` in Stripe's delivery log and a **Reconcile sold state** run appear in the repo's Actions
+   tab within seconds. A `400` means the signing secret does not match the endpoint.
+
+### If something goes wrong
+
+- **`400 Rejected: signature does not match the body`** — the `STRIPE_WEBHOOK_SECRET` belongs to a
+  different endpoint. Each endpoint has its own; re-copy it.
+- **`400 … timestamp is …s away from now`** — the event is older than five minutes. Normal for a
+  replayed request; suspicious otherwise.
+- **`500 Receiver is misconfigured`** — a secret or var was never set. The message names which.
+- **`502 GitHub refused the dispatch`** — almost always the PAT: expired, or missing Contents
+  write. Stripe retries a 502 on its own, and the cron covers the gap meanwhile.
+- **Nothing arrives at all** — check Stripe's delivery log first; if Stripe shows no attempt, the
+  endpoint is disabled or subscribed to the wrong events.
+
+To remove it: delete the endpoint in Stripe and run `npx wrangler delete`. Nothing else changes.
+
+### If you add this, update the ruleset
+
+`ci.yml` gained a **Worker tests** job. The branch ruleset on `main` lists the checks that must
+pass, and a check that is not listed cannot block anything — so add **Worker tests** alongside
+**Ruby tests** and **Jekyll build**, or a broken receiver will still sail through the reconciler's
+auto-merge.
+
 ## The test suite and what it blocks
 
 Run it any time with **`ruby test/all.rb`** (a second or two; needs no gems, no network, no

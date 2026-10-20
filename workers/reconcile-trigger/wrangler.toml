@@ -1,0 +1,19 @@
+# Cloudflare Worker config for the reconcile trigger.
+#
+# Deploy:  npx wrangler deploy          (from this directory)
+# Secrets: npx wrangler secret put STRIPE_WEBHOOK_SECRET
+#          npx wrangler secret put GITHUB_TOKEN
+#
+# Secrets are set with `wrangler secret put`, never written here — this file is committed.
+
+name = "glass-goblin-reconcile-trigger"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Not a secret: the repo the dispatch is aimed at. Kept as a plain var so a misdirected
+# deployment is visible in the diff rather than hidden in the secret store.
+[vars]
+GITHUB_REPOSITORY = "SRBayliss/glass-goblin"
+
+# Nothing here is scheduled, stateful or stored: one request in, one API call out.
+# If this Worker disappears entirely, the reconciler's cron still catches every sale.

@@ -199,10 +199,15 @@ setup. Use it as the acceptance test (`DRY_RUN=1` first to preview, then a real 
 
 ---
 
-## Phase 4b — webhook trigger (optional, deferred)
+## Phase 4b — webhook trigger (**built 2026-10-20**; deploying it is still optional)
 
 Add only if ~15-min staleness is too slow. It does **not** change the reconciler; it just fires it
 sooner. It stays non-safety-critical: if the webhook path breaks entirely, the cron still catches up.
+
+> Built ahead of that evidence, because the receiver needed no operator setup to write — the same
+> reason 4a and the bulk lister were built early. The *deploy* decision is still open and still the
+> operator's: the code sitting in the repo costs nothing and changes nothing until a Worker exists.
+> See "As built (Phase 4b)" below.
 
 ### Shape
 
@@ -329,12 +334,64 @@ asserted a case the guard was not responsible for; it was rewritten until the mu
 Untested until the operator supplies a key: the live Stripe call and pagination, the commit/push,
 and the build trigger.
 
+## As built (Phase 4b, 2026-10-20)
+
+`workers/reconcile-trigger/` — a Cloudflare Worker, no dependencies, ~150 lines. Stripe posts an
+event; if the signature is genuine and the type is one that could have changed what is for sale, it
+POSTs a `reconcile` `repository_dispatch`. The workflow already listened for that event type, so
+nothing in Phase 4a needed changing — the two halves met exactly where the spec said they would.
+
+Departures from the sketch, and the reasoning:
+
+1. **It subscribes to `payment_link.updated` as well as `checkout.session.completed`.** The second
+   is the sale; the first is the link self-deactivating at its cap, which is literally the state
+   the reconciler reads. Taking both means the trigger still fires if one event is missed, and
+   neither requires parsing the payload beyond `type`.
+2. **Signature verification is hand-rolled on Web Crypto** rather than pulling in Stripe's SDK:
+   HMAC-SHA256 over `${timestamp}.${raw body}`, compared constant-time against every `v1` in the
+   header. Multiple `v1` values are accepted because that is what a secret rotation looks like.
+   Dependency-free keeps it consistent with the rest of the repo and leaves nothing to update.
+3. **The raw request body is verified, never a re-serialisation.** Parsing and re-encoding the JSON
+   reorders keys and drops whitespace, and the signature then never matches. This is the classic
+   way to build a webhook receiver that works in testing and fails on real traffic.
+4. **Replay window of five minutes** (Stripe's own default), so a captured request has a bounded
+   life even if the signature is valid.
+5. **A failed dispatch returns 502, deliberately.** Stripe retries 5xx on its own, and the cron is
+   underneath that, so the worst case is ordinary staleness. Returning 200 on failure would throw
+   the event away silently.
+6. **It refuses to start when a secret is missing** rather than accepting webhooks and dropping
+   them — the failure a misconfigured receiver would otherwise hide.
+7. **`GITHUB_REPOSITORY` is a plain var in `wrangler.toml`, not a secret.** It is not sensitive,
+   and keeping it visible means a dispatch aimed at the wrong repo shows up in a diff.
+8. **A fine-grained PAT, not a GitHub App.** Minting an App installation token needs RS256 JWT
+   signing inside the Worker, which is a lot of moving parts for a service whose entire job is one
+   POST. The cost is an expiry date to remember, noted in the runbook. (4a needed the App for a
+   different reason — only an App or PAT token can *trigger* workflows — and that reason does not
+   apply here, since `repository_dispatch` triggers the workflow by definition.)
+
+**Verified** with 24 tests on Node's built-in runner (`node --test`, nothing to install, matching
+the Ruby suite's stdlib-only rule). Signatures in the tests are generated with `node:crypto`, so
+the Worker's Web Crypto implementation is checked against an independent one rather than itself;
+`fetch` is injected, so nothing reaches the network. 16 mutations — signature check removed, replay
+window removed, timestamp dropped from the signed payload, constant-time compare short-circuited,
+event filter removed, non-204 treated as success, token echoed into the response — **all caught**.
+
+`ci.yml` gained a **Worker tests** job, so the receiver is gated like everything else. Note that
+the branch ruleset's required-checks list needs **Worker tests** added by hand, or a red receiver
+will not block the reconciler's auto-merge PR. `_config.yml` excludes `workers/`.
+
+**Untested until deployed:** the live Stripe delivery, the real `repository_dispatch` call, and
+Cloudflare's runtime (the tests run the handler under Node, which shares the same Web Crypto and
+`fetch` APIs but is not the same runtime).
+
 ## Rollout
 
 1. **4a first.** Add `scripts/reconcile_sold.rb` + the workflow + the restricted Stripe key. Validate
    with `DRY_RUN=1`, then the `gg-0002` acceptance test. Live with the cron; measure real staleness.
-2. **4b only if needed.** Stand up the Worker for low latency once 4a's lag proves annoying. Stripe
-   first; PayPal only for dual-listed repeatable lines.
+2. **4b only if needed.** The Worker is written and tested; deploying it is a separate decision.
+   Stand it up once 4a's lag proves annoying in practice — `npx wrangler deploy`, two secrets, a
+   Stripe endpoint subscribed to two events (runbook: "Webhook trigger"). Stripe only; PayPal
+   remains unimplemented and only matters for a dual-listed repeatable line.
 3. Update `.docs/shop-runbook.md` to note the reconciler exists, its coverage table, and that manual
    `status: sold` edits are still the fallback (and still needed for partial repeatable-stock changes).
 

@@ -112,7 +112,7 @@ end
 
 class SecretsTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
-  TEXT_FILES = /\.(md|markdown|ya?ml|html|js|json|rb|scss|css|txt|webmanifest)\z|\A\.[^.]+\z/
+  TEXT_FILES = /\.(md|markdown|ya?ml|html|js|json|toml|rb|scss|css|txt|webmanifest)\z|\A\.[^.]+\z/
 
   # Each pattern requires a key-length body, not just a prefix, so the runbooks can name
   # what a key looks like without tripping this. Written as alternations rather than plain
