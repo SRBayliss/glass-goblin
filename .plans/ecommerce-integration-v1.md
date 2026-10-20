@@ -272,8 +272,9 @@ built-in runner, nothing to install, `fetch` injected so nothing reaches the net
 The suite **gates deployment**: `jekyll.yml` will not build or deploy unless
 `.github/workflows/ci.yml` passes, and the reconciler runs it both before it is allowed to
 touch a product file and again before it commits the result. `ci.yml` runs the Ruby suite and
-the receiver's tests as separate jobs — but note the branch ruleset lists required checks by
-name, so **Worker tests** has to be added there by hand to block anything.
+the receiver's tests as separate jobs, and the `main` ruleset requires all three check names
+(**Ruby tests**, **Worker tests**, **Jekyll build**) — created 2026-10-20, with the Admin role
+on the bypass list so direct pushes still work.
 
 **Manual, still required for anything visual.** `bundle exec jekyll build` / `serve` plus a
 look at the shop grid, a product page, the sold state, and the invoice CTA. The tests say

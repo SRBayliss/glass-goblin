@@ -211,13 +211,15 @@ needed once something actually sells.
    *Simpler alternative:* skip the App and put a fine-grained PAT (same two permissions, this repo
    only) in a secret named **`RECONCILE_PAT`**. The workflow uses it if no App is configured. It
    works, but it is a long-lived credential tied to you personally; the App's token lasts an hour.
-5. **Allow auto-merge.** Settings → General → Pull Requests → tick **Allow auto-merge**. Without
-   it the PR still opens, and the run warns instead of failing — you just merge it yourself.
-6. **Make the checks required** (this is what gives the PR its teeth). Settings → Rules → New
-   ruleset, targeting `main`: enable **Require a pull request before merging** with **0 required
-   approvals** — leave it at 0, or the bot's PR waits for a human forever — and **Require status
-   checks to pass**, adding **`Ruby tests`** and **`Jekyll build`**. Leave "Do not allow bypassing"
-   unticked so you can still push directly when you want to.
+5. ~~**Allow auto-merge.**~~ **Done 2026-10-20.** Settings → General → Pull Requests →
+   **Allow auto-merge** is ticked. (Without it the PR still opens and the run warns instead of
+   failing — you just merge it yourself.)
+6. ~~**Make the checks required.**~~ **Done 2026-10-20** — a ruleset named **`main`** now targets
+   the default branch with **Require a pull request** at **0 required approvals** and required
+   status checks **`Ruby tests`**, **`Worker tests`** and **`Jekyll build`**. The **Admin**
+   repository role is on the bypass list, so you can still push straight to `main` yourself.
+   To see or change it: Settings → Rules → Rulesets → `main`. To drop it entirely:
+   `gh api -X DELETE repos/SRBayliss/glass-goblin/rulesets/25443801`.
 7. On the **fork**, GitHub disables scheduled workflows by default — open the Actions tab and enable
    them. (Public repos also auto-disable a schedule after 60 days with no activity; a manual run
    re-arms it.)
@@ -304,12 +306,11 @@ path and the cron can never disagree with each other.
 
 To remove it: delete the endpoint in Stripe and run `npx wrangler delete`. Nothing else changes.
 
-### If you add this, update the ruleset
+### The receiver is gated like everything else
 
-`ci.yml` gained a **Worker tests** job. The branch ruleset on `main` lists the checks that must
-pass, and a check that is not listed cannot block anything — so add **Worker tests** alongside
-**Ruby tests** and **Jekyll build**, or a broken receiver will still sail through the reconciler's
-auto-merge.
+`ci.yml` has a **Worker tests** job, and **Worker tests** is in the `main` ruleset's required
+checks alongside **Ruby tests** and **Jekyll build** (added 2026-10-20). A check that is not
+listed there cannot block anything, so if you ever add another job, add it to the ruleset too.
 
 ## The test suite and what it blocks
 

@@ -376,9 +376,15 @@ the Worker's Web Crypto implementation is checked against an independent one rat
 window removed, timestamp dropped from the signed payload, constant-time compare short-circuited,
 event filter removed, non-204 treated as success, token echoed into the response — **all caught**.
 
-`ci.yml` gained a **Worker tests** job, so the receiver is gated like everything else. Note that
-the branch ruleset's required-checks list needs **Worker tests** added by hand, or a red receiver
-will not block the reconciler's auto-merge PR. `_config.yml` excludes `workers/`.
+`ci.yml` gained a **Worker tests** job, so the receiver is gated like everything else.
+`_config.yml` excludes `workers/`.
+
+**The ruleset that gives those checks teeth now exists** (created 2026-10-20, having never been
+set up): a `main` ruleset requiring a pull request at 0 approvals and the three check names, with
+the Admin role on the bypass list so the operator can still push directly. Auto-merge — the other
+setting the reconciler's PR flow depends on, and also never enabled — is on. Until this, the PR
+flow worked but enforced nothing: the bot's PR would have merged the moment it was mergeable,
+which looks identical to the gate working.
 
 **Untested until deployed:** the live Stripe delivery, the real `repository_dispatch` call, and
 Cloudflare's runtime (the tests run the handler under Node, which shares the same Web Crypto and
